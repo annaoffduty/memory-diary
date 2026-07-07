@@ -2,7 +2,7 @@
 // once the shell has been visited at least once.
 const CACHE_NAME = 'thread-diary-v1';
 const APP_SHELL = [
-  './memory-diary.html',
+  './index.html',
   './manifest.json'
 ];
 
