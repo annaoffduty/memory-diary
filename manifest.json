@@ -2,7 +2,7 @@
   "name": "Thread — Memory Diary",
   "short_name": "Thread",
   "description": "A private, location-aware memory diary with photos, voice notes, and video.",
-  "start_url": "./memory-diary.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#1B2430",
   "theme_color": "#1B2430",

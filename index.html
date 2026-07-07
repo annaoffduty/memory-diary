@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Thread — a memory diary</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1B2430">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#1B2430;
+    --ink-deep:#10161F;
+    --paper:#F6F1E7;
+    --paper-dim:#EDE5D3;
+    --gold:#D9A441;
+    --gold-soft:#e8c988;
+    --teal:#3E7C7B;
+    --rose:#B85C6B;
+    --ink-text:#24303D;
+    --muted:#8b93a0;
+    --danger:#c1544a;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:'Inter',sans-serif;
+    background:radial-gradient(ellipse at top, #232f3f 0%, var(--ink) 45%, var(--ink-deep) 100%);
+    color:var(--paper);
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+  ::selection{background:var(--gold-soft);color:var(--ink);}
+  h1,h2,h3,.display{font-family:'Fraunces',serif;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  button{font-family:inherit;cursor:pointer;}
+  a{color:inherit;}
+  input,textarea,select{font-family:'Inter',sans-serif;}
+
+  /* ---------- Auth screen ---------- */
+  #auth-screen{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    padding:24px;
+  }
+  .auth-card{
+    width:100%;max-width:400px;
+    background:var(--paper);
+    color:var(--ink-text);
+    border-radius:18px;
+    padding:38px 32px 32px;
+    box-shadow:0 30px 80px rgba(0,0,0,0.45);
+    position:relative;
+    overflow:hidden;
+  }
+  .auth-card::before{
+    content:"";position:absolute;top:0;left:0;right:0;height:5px;
+    background:linear-gradient(90deg,var(--gold),var(--rose),var(--teal));
+  }
+  .auth-brand{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+  .auth-brand .dot{width:10px;height:10px;border-radius:50%;background:var(--gold);}
+  .auth-brand span{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);}
+  .auth-card h1{font-size:30px;margin:6px 0 4px;font-weight:500;}
+  .auth-card p.sub{margin:0 0 26px;color:#6b7280;font-size:14.5px;line-height:1.5;}
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:6px;color:#556;}
+  .field input{
+    width:100%;padding:11px 13px;border-radius:9px;border:1.5px solid #ddd3bd;
+    background:#fffdf8;font-size:15px;color:var(--ink-text);outline:none;
+    transition:border-color .15s;
+  }
+  .field input:focus{border-color:var(--gold);}
+  .btn-primary{
+    width:100%;padding:12px;border-radius:9px;border:none;
+    background:var(--ink);color:var(--paper);font-weight:600;font-size:15px;
+    margin-top:6px;transition:transform .1s, background .15s;
+  }
+  .btn-primary:hover{background:#2c3a4c;}
+  .btn-primary:active{transform:scale(0.98);}
+  .auth-switch{margin-top:18px;text-align:center;font-size:13.5px;color:#7a8290;}
+  .auth-switch button{background:none;border:none;color:var(--teal);font-weight:600;text-decoration:underline;padding:0;}
+  .auth-error{background:#fbe4e1;color:var(--danger);padding:9px 12px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none;}
+  .auth-note{font-size:12px;color:#9aa1ab;margin-top:16px;line-height:1.5;text-align:center;}
+
+  /* ---------- App shell ---------- */
+  #app{display:none;min-height:100vh;flex-direction:column;}
+  header.topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:16px 22px;position:sticky;top:0;z-index:40;
+    background:rgba(27,36,48,0.85);backdrop-filter:blur(10px);
+    border-bottom:1px solid rgba(255,255,255,0.06);
+  }
+  .brand-row{display:flex;align-items:center;gap:10px;}
+  .brand-row .dot{width:9px;height:9px;border-radius:50%;background:var(--gold);box-shadow:0 0 12px var(--gold);}
+  .brand-row .name{font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+  .user-chip{display:flex;align-items:center;gap:10px;}
+  .user-chip .avatar{
+    width:30px;height:30px;border-radius:50%;background:var(--gold);
+    display:flex;align-items:center;justify-content:center;color:var(--ink);
+    font-weight:700;font-size:13px;font-family:'Fraunces',serif;
+  }
+  .user-chip span{font-size:13.5px;color:var(--paper);}
+  .icon-btn{
+    background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);
+    color:var(--paper);border-radius:8px;padding:7px 10px;font-size:12.5px;
+    display:flex;align-items:center;gap:6px;
+  }
+  .icon-btn:hover{background:rgba(255,255,255,0.12);}
+
+  .view-toggle{
+    display:flex;gap:4px;background:rgba(255,255,255,0.05);padding:4px;border-radius:10px;
+    border:1px solid rgba(255,255,255,0.08);
+  }
+  .view-toggle button{
+    background:none;border:none;color:var(--muted);padding:7px 14px;border-radius:7px;
+    font-size:13px;font-weight:500;transition:all .15s;
+  }
+  .view-toggle button.active{background:var(--gold);color:var(--ink);font-weight:600;}
+
+  main{flex:1;position:relative;}
+  .view{display:none;padding:30px 22px 100px;max-width:900px;margin:0 auto;}
+  .view.active{display:block;}
+
+  /* ---------- Timeline ---------- */
+  .month-heading{
+    font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);
+    margin:34px 0 18px;padding-left:34px;font-weight:600;
+  }
+  .month-heading:first-child{margin-top:0;}
+  .thread-wrap{position:relative;padding-left:34px;}
+  .thread-line{
+    position:absolute;left:9px;top:0;bottom:0;width:2px;
+    background:linear-gradient(180deg, var(--gold) 0%, rgba(217,164,65,0.25) 100%);
+  }
+  .entry-node{position:relative;margin-bottom:18px;}
+  .entry-dot{
+    position:absolute;left:-34px;top:22px;width:12px;height:12px;border-radius:50%;
+    background:var(--ink);border:2.5px solid var(--gold);
+  }
+  .entry-card{
+    background:var(--paper);color:var(--ink-text);border-radius:14px;
+    padding:18px 20px;box-shadow:0 10px 26px rgba(0,0,0,0.25);
+    cursor:pointer;transition:transform .12s, box-shadow .12s;
+    border-left:4px solid var(--gold);
+  }
+  .entry-card[data-type="voice"]{border-left-color:var(--rose);}
+  .entry-card[data-type="video"]{border-left-color:var(--teal);}
+  .entry-card[data-type="photo"]{border-left-color:var(--gold);}
+  .entry-card:hover{transform:translateY(-2px);box-shadow:0 14px 32px rgba(0,0,0,0.32);}
+  .entry-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .entry-title{font-size:17px;font-weight:500;margin:0 0 4px;}
+  .entry-meta{font-size:11.5px;color:#8a8570;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .entry-meta .tag{
+    display:inline-flex;align-items:center;gap:4px;background:#eee5d2;padding:2px 8px;border-radius:20px;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .entry-star{color:var(--gold);font-size:18px;flex-shrink:0;}
+  .entry-snippet{font-size:14px;color:#4b4b46;margin-top:8px;line-height:1.5;}
+  .entry-thumb{margin-top:10px;border-radius:9px;max-width:100%;max-height:220px;object-fit:cover;display:block;}
+  .empty-state{
+    text-align:center;padding:60px 20px;color:var(--muted);
+  }
+  .empty-state .display{font-size:22px;color:var(--paper);margin-bottom:8px;}
+
+  /* ---------- Map view ---------- */
+  #map-container{
+    height:calc(100vh - 130px);border-radius:16px;overflow:hidden;
+    border:1px solid rgba(255,255,255,0.1);
+  }
+  #leaflet-map{width:100%;height:100%;}
+  .leaflet-popup-content-wrapper{border-radius:10px;font-family:'Inter',sans-serif;}
+  .map-popup-title{font-family:'Fraunces',serif;font-size:15px;margin:0 0 4px;}
+  .map-popup-btn{background:var(--ink);color:var(--paper);border:none;padding:5px 10px;border-radius:6px;font-size:12px;margin-top:6px;}
+
+  /* ---------- Memory corner ---------- */
+  .corner-grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;
+  }
+  .corner-tile{
+    background:var(--paper);color:var(--ink-text);border-radius:12px;padding:14px;
+    aspect-ratio:1/1;display:flex;flex-direction:column;justify-content:space-between;
+    cursor:pointer;transition:transform .12s;position:relative;overflow:hidden;
+  }
+  .corner-tile:hover{transform:scale(1.02);}
+  .corner-tile img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.85;}
+  .corner-tile .corner-label{position:relative;z-index:1;font-weight:600;font-size:13px;
+    background:rgba(246,241,231,0.92);padding:4px 8px;border-radius:6px;display:inline-block;align-self:flex-start;}
+  .corner-tile .corner-star{position:relative;z-index:1;text-align:right;color:var(--gold);font-size:20px;}
+
+  /* ---------- FAB ---------- */
+  .fab{
+    position:fixed;bottom:26px;right:26px;z-index:50;
+    width:58px;height:58px;border-radius:50%;background:var(--gold);border:none;
+    color:var(--ink);font-size:26px;box-shadow:0 10px 26px rgba(217,164,65,0.45);
+    display:flex;align-items:center;justify-content:center;transition:transform .15s;
+  }
+  .fab:hover{transform:scale(1.06) rotate(90deg);}
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{
+    display:none;position:fixed;inset:0;background:rgba(10,14,20,0.7);z-index:100;
+    align-items:flex-start;justify-content:center;padding:30px 16px;overflow-y:auto;
+    backdrop-filter:blur(3px);
+  }
+  .modal-overlay.active{display:flex;}
+  .modal{
+    background:var(--paper);color:var(--ink-text);border-radius:16px;max-width:520px;width:100%;
+    padding:26px 26px 24px;position:relative;margin:auto 0;
+  }
+  .modal h2{margin:0 0 18px;font-size:22px;font-weight:500;}
+  .modal-close{position:absolute;top:16px;right:18px;background:none;border:none;font-size:20px;color:#999;}
+  .type-selector{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;}
+  .type-btn{
+    flex:1;min-width:70px;padding:10px 6px;border-radius:9px;border:1.5px solid #ddd3bd;
+    background:#fffdf8;font-size:12.5px;font-weight:600;color:#77706a;text-align:center;
+  }
+  .type-btn.active{border-color:var(--ink);background:var(--ink);color:var(--paper);}
+  .field textarea{
+    width:100%;padding:11px 13px;border-radius:9px;border:1.5px solid #ddd3bd;
+    background:#fffdf8;font-size:14.5px;color:var(--ink-text);outline:none;resize:vertical;min-height:70px;
+  }
+  .field textarea:focus{border-color:var(--gold);}
+  .row-2{display:flex;gap:12px;}
+  .row-2 .field{flex:1;}
+  .loc-picker{
+    height:280px;border-radius:10px;overflow:hidden;border:1.5px solid #ddd3bd;margin-bottom:6px;
+  }
+  .loc-status{font-size:12px;color:#8a8570;font-family:'JetBrains Mono',monospace;}
+  .media-drop{
+    border:1.8px dashed #ddd3bd;border-radius:10px;padding:16px;text-align:center;
+    font-size:13px;color:#8a8570;cursor:pointer;background:#fffdf8;
+  }
+  .media-drop.has-file{border-color:var(--teal);color:var(--teal);font-weight:600;}
+  .voice-controls{display:flex;gap:8px;align-items:center;}
+  .rec-btn{
+    background:var(--rose);color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:600;font-size:13px;
+  }
+  .rec-btn.recording{background:#8f2c39;animation:pulse 1s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.6;}}
+  .star-toggle{
+    display:flex;align-items:center;gap:8px;margin:14px 0 4px;padding:10px 12px;
+    background:#fffdf8;border:1.5px solid #ddd3bd;border-radius:9px;font-size:13.5px;
+  }
+  .star-toggle input{width:17px;height:17px;accent-color:var(--gold);}
+  .modal-actions{display:flex;gap:10px;margin-top:20px;}
+  .btn-secondary{
+    flex:1;padding:11px;border-radius:9px;border:1.5px solid #ddd3bd;background:#fffdf8;
+    color:#666;font-weight:600;font-size:14px;
+  }
+  .btn-danger{background:#fbe4e1;color:var(--danger);border-color:#f0c9c4;}
+  .field-error{color:var(--danger);font-size:12.5px;margin-top:-8px;margin-bottom:12px;display:none;}
+
+  /* Detail view */
+  .detail-media{width:100%;border-radius:10px;margin-bottom:14px;max-height:340px;object-fit:cover;}
+  .detail-text{font-size:15px;line-height:1.65;color:#3b3b36;white-space:pre-wrap;}
+  .detail-meta-row{display:flex;gap:14px;flex-wrap:wrap;margin:12px 0 16px;font-size:12.5px;color:#8a8570;font-family:'JetBrains Mono',monospace;}
+
+  #toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    background:var(--ink);color:var(--paper);padding:11px 20px;border-radius:9px;
+    font-size:13.5px;box-shadow:0 10px 24px rgba(0,0,0,0.4);z-index:200;
+    opacity:0;pointer-events:none;transition:opacity .25s, transform .25s;
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
+
+  .loading-spin{
+    display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);
+    border-top-color:var(--paper);border-radius:50%;animation:spin .7s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  #global-loader{
+    display:none;position:fixed;inset:0;background:var(--ink);z-index:300;
+    align-items:center;justify-content:center;flex-direction:column;gap:14px;color:var(--muted);
+  }
+  #global-loader.active{display:flex;}
+
+  @media (max-width:600px){
+    .view-toggle button{padding:7px 10px;font-size:12px;}
+    .brand-row .name{display:none;}
+    header.topbar{padding:12px 14px;}
+    .view{padding:20px 12px 100px;}
+  }
+</style>
+</head>
+<body>
+
+<div id="global-loader"><div class="loading-spin"></div><span id="loader-text">Loading…</span></div>
+
+<!-- ============ AUTH SCREEN ============ -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-brand"><div class="dot"></div><span>Thread</span></div>
+    <h1 id="auth-title">Welcome back</h1>
+    <p class="sub" id="auth-sub">Log in to your memory diary. Your entries are private to your account.</p>
+    <div class="auth-error" id="auth-error"></div>
+
+    <div id="signup-name-field" class="field" style="display:none;">
+      <label>Display name</label>
+      <input type="text" id="signup-name" placeholder="What should we call you?">
+    </div>
+    <div class="field">
+      <label>Username</label>
+      <input type="text" id="auth-username" placeholder="e.g. maya92" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-primary" id="auth-submit-btn">Log in</button>
+    <div class="auth-switch">
+      <span id="auth-switch-text">New here?</span>
+      <button id="auth-switch-btn">Create an account</button>
+    </div>
+    <p class="auth-note">Each account's entries are fully separate — no one else can see your diary. Passwords are hashed before storage.</p>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app">
+  <header class="topbar">
+    <div class="brand-row">
+      <div class="dot"></div>
+      <span class="name">Thread</span>
+    </div>
+    <div class="view-toggle">
+      <button data-view="timeline" class="active">Timeline</button>
+      <button data-view="map">Map</button>
+      <button data-view="corner">Memory Corner</button>
+    </div>
+    <div class="user-chip">
+      <div class="avatar" id="user-avatar">M</div>
+      <span id="user-name-label"></span>
+      <button class="icon-btn" id="logout-btn">Log out</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="view active" id="view-timeline">
+      <div id="timeline-content"></div>
+    </div>
+    <div class="view" id="view-map">
+      <div id="map-container"><div id="leaflet-map"></div></div>
+    </div>
+    <div class="view" id="view-corner">
+      <div id="corner-content"></div>
+    </div>
+  </main>
+
+  <button class="fab" id="fab-add" title="Add a memory">+</button>
+</div>
+
+<!-- ============ ADD/EDIT ENTRY MODAL ============ -->
+<div class="modal-overlay" id="entry-modal-overlay">
+  <div class="modal">
+    <button class="modal-close" id="entry-modal-close">✕</button>
+    <h2 id="entry-modal-title">New memory</h2>
+
+    <div class="type-selector" id="type-selector">
+      <button type="button" class="type-btn active" data-type="note">📝 Note</button>
+      <button type="button" class="type-btn" data-type="photo">📷 Photo</button>
+      <button type="button" class="type-btn" data-type="voice">🎙 Voice</button>
+      <button type="button" class="type-btn" data-type="video">🎬 Video</button>
+    </div>
+
+    <div class="field">
+      <label>Title</label>
+      <input type="text" id="entry-title-input" placeholder="A name for this memory">
+    </div>
+    <div class="row-2">
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="entry-date-input">
+      </div>
+      <div class="field">
+        <label>Place name (optional)</label>
+        <input type="text" id="entry-place-input" placeholder="e.g. Queenstown, NZ">
+        <button type="button" class="btn-secondary" id="locate-btn" style="margin-top:6px;padding:6px;font-size:12px;">🔍 Find on map</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Notes</label>
+      <textarea id="entry-text-input" placeholder="Write what happened…"></textarea>
+    </div>
+
+    <div class="field" id="media-field">
+      <label id="media-field-label">Add a photo</label>
+      <div class="media-drop" id="media-drop">Click to choose a file</div>
+      <input type="file" id="media-file-input" accept="image/*" style="display:none;">
+      <div class="voice-controls" id="voice-controls" style="display:none;margin-top:8px;">
+        <button type="button" class="rec-btn" id="rec-btn">● Record (max 60s)</button>
+        <span class="loc-status" id="rec-status"></span>
+      </div>
+      <audio id="voice-preview" controls style="display:none;width:100%;margin-top:8px;"></audio>
+    </div>
+    <div class="field-error" id="media-error"></div>
+
+    <div class="field">
+      <label>Pin it on the map — type a place above and hit Find, or click directly to place/move the pin</label>
+      <div class="loc-picker" id="loc-picker"></div>
+      <div class="loc-status" id="loc-status">No location set</div>
+      <button type="button" class="btn-secondary" id="clear-pin-btn" style="margin-top:6px;padding:7px 12px;font-size:12.5px;">✕ Clear pin</button>
+    </div>
+
+    <label class="star-toggle">
+      <input type="checkbox" id="entry-star-input">
+      ⭐ Add to Memory Corner — this one's special
+    </label>
+
+    <div class="field-error" id="entry-form-error"></div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" id="entry-delete-btn" style="display:none;">Delete</button>
+      <button class="btn-primary" id="entry-save-btn" style="flex:2;">Save memory</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ENTRY DETAIL MODAL ============ -->
+<div class="modal-overlay" id="detail-modal-overlay">
+  <div class="modal">
+    <button class="modal-close" id="detail-modal-close">✕</button>
+    <div id="detail-content"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="detail-edit-btn">Edit</button>
+      <button class="btn-secondary btn-danger" id="detail-delete-btn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------------- Utilities ----------------
+  const $ = (sel, root) => (root||document).querySelector(sel);
+  const $$ = (sel, root) => Array.from((root||document).querySelectorAll(sel));
+
+  function showToast(msg, isError){
+    const t = $('#toast');
+    t.textContent = msg;
+    t.style.background = isError ? '#8f2c39' : 'var(--ink)';
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(()=> t.classList.remove('show'), 2600);
+  }
+
+  function setLoading(on, text){
+    const l = $('#global-loader');
+    $('#loader-text').textContent = text || 'Loading…';
+    l.classList.toggle('active', !!on);
+  }
+
+  async function sha256Hex(str){
+    const enc = new TextEncoder().encode(str);
+    const buf = await crypto.subtle.digest('SHA-256', enc);
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  function randomSalt(){
+    const arr = new Uint8Array(16);
+    crypto.getRandomValues(arr);
+    return Array.from(arr).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  function uid(){
+    return Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+  }
+
+  function fmtDate(iso){
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString(undefined,{month:'short', day:'numeric', year:'numeric'});
+  }
+  function monthKey(iso){
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString(undefined,{month:'long', year:'numeric'});
+  }
+
+  // ---------------- Supabase backend ----------------
+  // Real accounts, real database, real file storage. Row Level Security
+  // (set up in Supabase) guarantees each account can only ever read or
+  // write its own rows and its own files — enforced by the database
+  // itself, not just by this client-side code.
+  const SUPABASE_URL = 'https://pmouyudpgthdczhyrrlt.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_KC-ESfx3Du0gyAhT6vpmtQ_TqmuzzYs';
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // Supabase Auth needs an email address. We let people sign in with a
+  // plain username, and translate it to a fake internal address behind
+  // the scenes — the real password check still happens in Supabase Auth.
+  function usernameToEmail(username){
+    return username + '@users.thread-diary.app';
+  }
+
+  const Store = {
+    async signUp(username, password, displayName){
+      const { data, error } = await sb.auth.signUp({
+        email: usernameToEmail(username),
+        password,
+        options: { data: { display_name: displayName, username } }
+      });
+      if(error) throw error;
+      return data;
+    },
+    async logIn(username, password){
+      const { data, error } = await sb.auth.signInWithPassword({
+        email: usernameToEmail(username),
+        password
+      });
+      if(error) throw error;
+      return data;
+    },
+    async logOut(){
+      await sb.auth.signOut();
+    },
+    async getEntries(){
+      const { data, error } = await sb.from('entries').select('*').order('date', {ascending:false});
+      if(error) throw error;
+      return (data||[]).map(row=>({
+        id: row.id, type: row.type, title: row.title, text: row.text,
+        date: row.date, location: row.location, mediaKey: row.media_path,
+        mediaType: row.media_type, isMemory: row.is_memory, createdAt: row.created_at
+      }));
+    },
+    async insertEntry(entry, userId){
+      const { data, error } = await sb.from('entries').insert({
+        id: entry.id, user_id: userId, type: entry.type, title: entry.title, text: entry.text,
+        date: entry.date, location: entry.location, media_path: entry.mediaKey,
+        media_type: entry.mediaType, is_memory: entry.isMemory
+      }).select().single();
+      if(error) throw error;
+      return data.created_at;
+    },
+    async updateEntry(id, entry){
+      const { error } = await sb.from('entries').update({
+        type: entry.type, title: entry.title, text: entry.text,
+        date: entry.date, location: entry.location, media_path: entry.mediaKey,
+        media_type: entry.mediaType, is_memory: entry.isMemory
+      }).eq('id', id);
+      if(error) throw error;
+    },
+    async deleteEntry(id){
+      const { error } = await sb.from('entries').delete().eq('id', id);
+      if(error) throw error;
+    },
+    async uploadMedia(userId, id, dataUrl, mimeType){
+      const blob = dataUrlToBlob(dataUrl);
+      const ext = (mimeType.split('/')[1] || 'bin').split(';')[0];
+      const path = `${userId}/${id}.${ext}`;
+      const { error } = await sb.storage.from('Memories').upload(path, blob, { upsert: true, contentType: mimeType });
+      if(error) throw error;
+      return path;
+    },
+    async getMediaUrl(path){
+      const { data, error } = await sb.storage.from('Memories').createSignedUrl(path, 3600);
+      if(error) return null;
+      return data.signedUrl;
+    },
+    async deleteMedia(path){
+      if(!path) return;
+      try{ await sb.storage.from('Memories').remove([path]); }catch(e){}
+    }
+  };
+
+  function dataUrlToBlob(dataUrl){
+    const [header, base64] = dataUrl.split(',');
+    const mime = header.match(/:(.*?);/)[1];
+    const bin = atob(base64);
+    const arr = new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], {type: mime});
+  }
+
+  // ---------------- App state ----------------
+  const state = {
+    username: null,
+    userId: null,
+    displayName: null,
+    entries: [],
+    mediaCache: {},   // id -> signed url, loaded lazily
+    view: 'timeline',
+    map: null,
+    markers: [],
+    pathLine: null,
+    pickerMap: null,
+    pickerMarker: null,
+    pickedLocation: null,
+    editingId: null,
+    mediaData: null,      // base64 data url staged for save
+    mediaType: null,
+    selectedType: 'note',
+    mediaRecorder: null,
+    recordedChunks: [],
+    recTimer: null
+  };
+
+  // ================= AUTH =================
+  let authMode = 'login';
+
+  function setAuthMode(mode){
+    authMode = mode;
+    $('#auth-error').style.display = 'none';
+    if(mode === 'login'){
+      $('#auth-title').textContent = 'Welcome back';
+      $('#auth-sub').textContent = 'Log in to your memory diary. Your entries are private to your account.';
+      $('#signup-name-field').style.display = 'none';
+      $('#auth-submit-btn').textContent = 'Log in';
+      $('#auth-switch-text').textContent = 'New here?';
+      $('#auth-switch-btn').textContent = 'Create an account';
+    } else {
+      $('#auth-title').textContent = 'Start your diary';
+      $('#auth-sub').textContent = 'Create an account. Your entries stay separate from everyone else\'s.';
+      $('#signup-name-field').style.display = 'block';
+      $('#auth-submit-btn').textContent = 'Create account';
+      $('#auth-switch-text').textContent = 'Already have an account?';
+      $('#auth-switch-btn').textContent = 'Log in instead';
+    }
+  }
+
+  $('#auth-switch-btn').addEventListener('click', ()=>{
+    setAuthMode(authMode === 'login' ? 'signup' : 'login');
+  });
+
+  function authError(msg){
+    const el = $('#auth-error');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  $('#auth-submit-btn').addEventListener('click', async ()=>{
+    const username = $('#auth-username').value.trim().toLowerCase();
+    const password = $('#auth-password').value;
+    if(!username || !password){ authError('Please fill in both fields.'); return; }
+    if(!/^[a-z0-9_.-]{3,24}$/.test(username)){ authError('Username: 3-24 chars, letters/numbers/._- only.'); return; }
+
+    setLoading(true, authMode === 'login' ? 'Logging in…' : 'Creating your account…');
+    try{
+      if(authMode === 'signup'){
+        const displayName = $('#signup-name').value.trim() || username;
+        if(password.length < 4){ setLoading(false); authError('Password should be at least 4 characters.'); return; }
+        const data = await Store.signUp(username, password, displayName);
+        if(!data.session){
+          // Shouldn't happen with "Confirm email" turned off, but just in case.
+          setLoading(false);
+          authError('Account created — please try logging in.');
+          setAuthMode('login');
+          return;
+        }
+        await enterApp(username, displayName, data.user.id);
+      } else {
+        const data = await Store.logIn(username, password);
+        const displayName = (data.user.user_metadata && data.user.user_metadata.display_name) || username;
+        await enterApp(username, displayName, data.user.id);
+      }
+    }catch(e){
+      setLoading(false);
+      if(e.message && /already registered|already exists/i.test(e.message)){
+        authError('That username is taken. Try logging in, or pick another.');
+      } else if(e.message && /invalid login credentials/i.test(e.message)){
+        authError('Incorrect username or password.');
+      } else {
+        authError('Something went wrong. Please try again.');
+      }
+      console.error(e);
+    }
+  });
+
+  async function enterApp(username, displayName, userId){
+    state.username = username;
+    state.displayName = displayName;
+    state.userId = userId;
+    state.entries = await Store.getEntries();
+    $('#user-avatar').textContent = displayName[0].toUpperCase();
+    $('#user-name-label').textContent = displayName;
+    $('#auth-screen').style.display = 'none';
+    $('#app').style.display = 'flex';
+    setLoading(false);
+    renderTimeline();
+    initPickerMapIfNeeded();
+    showToast('Welcome, ' + displayName + '.');
+  }
+
+  $('#logout-btn').addEventListener('click', async ()=>{
+    await Store.logOut();
+    state.username = null;
+    state.userId = null;
+    state.entries = [];
+    state.mediaCache = {};
+    if(state.map){ state.map.remove(); state.map = null; }
+    $('#app').style.display = 'none';
+    $('#auth-screen').style.display = 'flex';
+    $('#auth-username').value = '';
+    $('#auth-password').value = '';
+    setAuthMode('login');
+  });
+
+  // ================= VIEW SWITCHING =================
+  $$('.view-toggle button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      $$('.view-toggle button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const v = btn.dataset.view;
+      state.view = v;
+      $$('.view').forEach(sec=>sec.classList.remove('active'));
+      $('#view-'+v).classList.add('active');
+      if(v === 'timeline') renderTimeline();
+      if(v === 'map') renderMap();
+      if(v === 'corner') renderMemoryCorner();
+    });
+  });
+
+  // ================= TIMELINE =================
+  function typeIcon(type){
+    return {note:'📝', photo:'📷', voice:'🎙', video:'🎬'}[type] || '📝';
+  }
+
+  function renderTimeline(){
+    const container = $('#timeline-content');
+    const sorted = [...state.entries].sort((a,b)=> b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
+    if(sorted.length === 0){
+      container.innerHTML = `<div class="empty-state">
+        <div class="display">Your thread starts here</div>
+        <div>Tap the + button to add your first memory.</div>
+      </div>`;
+      return;
+    }
+    let html = '';
+    let currentMonth = null;
+    let openThread = false;
+    sorted.forEach(entry=>{
+      const mk = monthKey(entry.date);
+      if(mk !== currentMonth){
+        if(openThread) html += `</div></div>`;
+        html += `<div class="month-heading">${mk}</div><div class="thread-wrap"><div class="thread-line"></div>`;
+        currentMonth = mk;
+        openThread = true;
+      }
+      html += `
+        <div class="entry-node">
+          <div class="entry-dot"></div>
+          <div class="entry-card" data-type="${entry.type}" data-id="${entry.id}">
+            <div class="entry-top">
+              <div>
+                <div class="entry-title">${typeIcon(entry.type)} ${escapeHtml(entry.title)}</div>
+                <div class="entry-meta">
+                  <span class="tag">${fmtDate(entry.date)}</span>
+                  ${entry.location ? `<span class="tag">📍 ${escapeHtml(entry.location.name || 'Pinned')}</span>` : ''}
+                </div>
+              </div>
+              ${entry.isMemory ? '<div class="entry-star">⭐</div>' : ''}
+            </div>
+            ${entry.text ? `<div class="entry-snippet">${escapeHtml(truncate(entry.text, 140))}</div>` : ''}
+            ${entry.mediaKey && entry.type === 'photo' ? `<img class="entry-thumb" data-lazy-media="${entry.id}" alt="">` : ''}
+          </div>
+        </div>`;
+    });
+    if(openThread) html += `</div></div>`;
+    container.innerHTML = html;
+
+    $$('.entry-card', container).forEach(card=>{
+      card.addEventListener('click', ()=> openDetail(card.dataset.id));
+    });
+    // lazy-load thumbnails
+    $$('[data-lazy-media]', container).forEach(async img=>{
+      const id = img.dataset.lazyMedia;
+      const url = await getMediaCached(id);
+      if(url) img.src = url;
+    });
+  }
+
+  function escapeHtml(s){
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+  }
+  function truncate(s, n){ return s.length > n ? s.slice(0,n) + '…' : s; }
+
+  async function getMediaCached(id){
+    if(state.mediaCache[id]) return state.mediaCache[id];
+    const entry = state.entries.find(e=>e.id === id);
+    if(!entry || !entry.mediaKey) return null;
+    const url = await Store.getMediaUrl(entry.mediaKey);
+    if(url) state.mediaCache[id] = url;
+    return url;
+  }
+
+  // ================= MAP VIEW =================
+  function renderMap(){
+    if(!state.map){
+      state.map = L.map('leaflet-map', {zoomControl:true}).setView([20,0], 2);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+        maxZoom: 19
+      }).addTo(state.map);
+    }
+    state.markers.forEach(m=> state.map.removeLayer(m));
+    state.markers = [];
+    if(state.pathLine){ state.map.removeLayer(state.pathLine); state.pathLine = null; }
+
+    const withLoc = [...state.entries].filter(e=>e.location).sort((a,b)=> a.date.localeCompare(b.date));
+    if(withLoc.length === 0){
+      showToast('Pin a location on an entry to see it on the map.');
+      setTimeout(()=> state.map && state.map.invalidateSize(), 50);
+      return;
+    }
+
+    const latlngs = [];
+    withLoc.forEach(entry=>{
+      const {lat, lng} = entry.location;
+      latlngs.push([lat,lng]);
+      const marker = L.circleMarker([lat,lng], {
+        radius: entry.isMemory ? 9 : 7,
+        color: '#D9A441',
+        weight: 2,
+        fillColor: entry.isMemory ? '#D9A441' : '#F6F1E7',
+        fillOpacity: 0.9
+      }).addTo(state.map);
+      marker.bindPopup(`
+        <div class="map-popup-title">${typeIcon(entry.type)} ${escapeHtml(entry.title)}</div>
+        <div style="font-size:12px;color:#777;">${fmtDate(entry.date)} · ${escapeHtml(entry.location.name || '')}</div>
+        <button class="map-popup-btn" data-open-id="${entry.id}">Open memory</button>
+      `);
+      marker.on('popupopen', (e)=>{
+        const btn = e.popup._contentNode.querySelector('[data-open-id]');
+        if(btn) btn.addEventListener('click', ()=> openDetail(entry.id));
+      });
+      state.markers.push(marker);
+    });
+
+    // the signature thread, now drawn across the map as a travel path
+    if(latlngs.length > 1){
+      state.pathLine = L.polyline(latlngs, {color:'#D9A441', weight:2, opacity:0.55, dashArray:'4,8'}).addTo(state.map);
+    }
+
+    const bounds = L.latLngBounds(latlngs);
+    setTimeout(()=>{
+      state.map.invalidateSize();
+      state.map.fitBounds(bounds.pad(0.25));
+    }, 50);
+  }
+
+  // ================= MEMORY CORNER =================
+  function renderMemoryCorner(){
+    const container = $('#corner-content');
+    const memories = state.entries.filter(e=>e.isMemory).sort((a,b)=> b.date.localeCompare(a.date));
+    if(memories.length === 0){
+      container.innerHTML = `<div class="empty-state">
+        <div class="display">No memories starred yet</div>
+        <div>When adding or editing an entry, check "Add to Memory Corner" to feature it here.</div>
+      </div>`;
+      return;
+    }
+    container.innerHTML = `<div class="corner-grid">${memories.map(e=>`
+      <div class="corner-tile" data-id="${e.id}">
+        ${e.mediaKey && e.type==='photo' ? `<img data-lazy-media="${e.id}" alt="">` : ''}
+        <span class="corner-label">${typeIcon(e.type)} ${escapeHtml(truncate(e.title,18))}</span>
+        <span class="corner-star">⭐</span>
+      </div>`).join('')}</div>`;
+    $$('.corner-tile', container).forEach(tile=>{
+      tile.addEventListener('click', ()=> openDetail(tile.dataset.id));
+    });
+    $$('[data-lazy-media]', container).forEach(async img=>{
+      const id = img.dataset.lazyMedia;
+      const url = await getMediaCached(id);
+      if(url) img.src = url;
+    });
+  }
+
+  // ================= ADD / EDIT ENTRY MODAL =================
+  const entryOverlay = $('#entry-modal-overlay');
+  const detailOverlay = $('#detail-modal-overlay');
+
+  function resetEntryForm(){
+    state.editingId = null;
+    state.mediaData = null;
+    state.mediaType = null;
+    state.pickedLocation = null;
+    state.selectedType = 'note';
+    $('#entry-title-input').value = '';
+    $('#entry-date-input').value = new Date().toISOString().slice(0,10);
+    $('#entry-place-input').value = '';
+    $('#entry-text-input').value = '';
+    $('#entry-star-input').checked = false;
+    $('#media-drop').textContent = 'Click to choose a file';
+    $('#media-drop').classList.remove('has-file');
+    $('#voice-preview').style.display = 'none';
+    $('#voice-preview').src = '';
+    $('#rec-status').textContent = '';
+    $('#loc-status').textContent = 'No location set';
+    $('#media-error').style.display = 'none';
+    $('#entry-form-error').style.display = 'none';
+    $('#entry-delete-btn').style.display = 'none';
+    setTypeUI('note');
+    if(state.pickerMarker){ state.pickerMap.removeLayer(state.pickerMarker); state.pickerMarker = null; }
+  }
+
+  function setTypeUI(type){
+    state.selectedType = type;
+    $$('.type-btn').forEach(b=> b.classList.toggle('active', b.dataset.type === type));
+    const label = $('#media-field-label');
+    const drop = $('#media-drop');
+    const fileInput = $('#media-file-input');
+    const voiceControls = $('#voice-controls');
+    $('#media-field').style.display = type === 'note' ? 'none' : 'block';
+    voiceControls.style.display = type === 'voice' ? 'flex' : 'none';
+    drop.style.display = (type === 'photo' || type === 'video') ? 'block' : 'none';
+    if(type === 'photo'){ label.textContent = 'Add a photo'; fileInput.accept = 'image/*'; }
+    if(type === 'video'){ label.textContent = 'Add a short video (large files may not save — keep under ~4MB)'; fileInput.accept = 'video/*'; }
+  }
+
+  $$('.type-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> setTypeUI(btn.dataset.type));
+  });
+
+  $('#fab-add').addEventListener('click', ()=>{
+    resetEntryForm();
+    $('#entry-modal-title').textContent = 'New memory';
+    entryOverlay.classList.add('active');
+  });
+  $('#entry-modal-close').addEventListener('click', ()=> entryOverlay.classList.remove('active'));
+  entryOverlay.addEventListener('click', (e)=>{ if(e.target === entryOverlay) entryOverlay.classList.remove('active'); });
+
+  // --- location picker map (inside modal) ---
+  function initPickerMapIfNeeded(){
+    if(state.pickerMap) return;
+    setTimeout(()=>{
+      state.pickerMap = L.map('loc-picker', {zoomControl:true, attributionControl:false}).setView([20,0], 1.5);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {maxZoom:19}).addTo(state.pickerMap);
+      state.pickerMap.on('click', (e)=>{
+        placePin(e.latlng.lat, e.latlng.lng, $('#entry-place-input').value.trim(), false);
+      });
+    }, 100);
+  }
+
+  function placePin(lat, lng, name, recenter){
+    state.pickedLocation = {lat, lng, name};
+    if(state.pickerMarker) state.pickerMap.removeLayer(state.pickerMarker);
+    state.pickerMarker = L.marker([lat,lng]).addTo(state.pickerMap);
+    if(recenter) state.pickerMap.setView([lat,lng], 11);
+    $('#loc-status').textContent = `Pinned at ${lat.toFixed(3)}, ${lng.toFixed(3)}`;
+  }
+
+  $('#locate-btn').addEventListener('click', async ()=>{
+    const q = $('#entry-place-input').value.trim();
+    if(!q){ showToast('Type a place name first, then hit Find.', true); return; }
+    const btn = $('#locate-btn');
+    const original = btn.textContent;
+    btn.textContent = 'Searching…';
+    try{
+      const res = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q));
+      const results = await res.json();
+      if(!results.length){
+        showToast('Could not find that place — try being more specific, or just click the map.', true);
+        return;
+      }
+      placePin(parseFloat(results[0].lat), parseFloat(results[0].lon), q, true);
+    }catch(err){
+      console.error(err);
+      showToast('Location search failed — you can still click the map directly.', true);
+    }finally{
+      btn.textContent = original;
+    }
+  });
+
+  $('#clear-pin-btn').addEventListener('click', ()=>{
+    state.pickedLocation = null;
+    if(state.pickerMarker){ state.pickerMap.removeLayer(state.pickerMarker); state.pickerMarker = null; }
+    $('#loc-status').textContent = 'No location set';
+  });
+
+  // --- photo/video file handling ---
+  $('#media-drop').addEventListener('click', ()=> $('#media-file-input').click());
+  $('#media-file-input').addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    $('#media-error').style.display = 'none';
+    try{
+      if(state.selectedType === 'photo'){
+        const dataUrl = await compressImage(file, 1280, 0.72);
+        state.mediaData = dataUrl;
+        state.mediaType = 'image/jpeg';
+      } else {
+        if(file.size > 4 * 1024 * 1024){
+          const el = $('#media-error');
+          el.textContent = 'That video is too large to store here (limit ~4MB). Try a shorter clip.';
+          el.style.display = 'block';
+          e.target.value = '';
+          return;
+        }
+        state.mediaData = await fileToDataUrl(file);
+        state.mediaType = file.type;
+      }
+      $('#media-drop').textContent = '✓ ' + file.name;
+      $('#media-drop').classList.add('has-file');
+    }catch(err){
+      console.error(err);
+      showToast('Could not read that file.', true);
+    }
+  });
+
+  function fileToDataUrl(file){
+    return new Promise((resolve,reject)=>{
+      const r = new FileReader();
+      r.onload = ()=> resolve(r.result);
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+  }
+
+  function compressImage(file, maxDim, quality){
+    return new Promise((resolve,reject)=>{
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        img.onload = ()=>{
+          let {width, height} = img;
+          if(width > maxDim || height > maxDim){
+            if(width > height){ height = Math.round(height * maxDim/width); width = maxDim; }
+            else { width = Math.round(width * maxDim/height); height = maxDim; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // --- voice recording ---
+  $('#rec-btn').addEventListener('click', async ()=>{
+    const btn = $('#rec-btn');
+    if(state.mediaRecorder && state.mediaRecorder.state === 'recording'){
+      state.mediaRecorder.stop();
+      return;
+    }
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+      state.recordedChunks = [];
+      const recorder = new MediaRecorder(stream);
+      state.mediaRecorder = recorder;
+      recorder.ondataavailable = (e)=>{ if(e.data.size>0) state.recordedChunks.push(e.data); };
+      recorder.onstop = async ()=>{
+        stream.getTracks().forEach(t=>t.stop());
+        clearInterval(state.recTimer);
+        btn.classList.remove('recording');
+        btn.textContent = '● Record (max 60s)';
+        const blob = new Blob(state.recordedChunks, {type:'audio/webm'});
+        if(blob.size > 4.5*1024*1024){
+          $('#rec-status').textContent = 'Recording too large to save — try a shorter one.';
+          return;
+        }
+        state.mediaData = await new Promise(res=>{
+          const r = new FileReader();
+          r.onload = ()=> res(r.result);
+          r.readAsDataURL(blob);
+        });
+        state.mediaType = 'audio/webm';
+        const preview = $('#voice-preview');
+        preview.src = state.mediaData;
+        preview.style.display = 'block';
+        $('#rec-status').textContent = 'Recording saved ✓';
+      };
+      recorder.start();
+      btn.classList.add('recording');
+      btn.textContent = '■ Stop recording';
+      let secs = 0;
+      state.recTimer = setInterval(()=>{
+        secs++;
+        $('#rec-status').textContent = secs + 's';
+        if(secs >= 60) recorder.stop();
+      }, 1000);
+    }catch(err){
+      console.error(err);
+      showToast('Microphone access was blocked or unavailable.', true);
+    }
+  });
+
+  // --- save entry ---
+  $('#entry-save-btn').addEventListener('click', async ()=>{
+    const title = $('#entry-title-input').value.trim();
+    const date = $('#entry-date-input').value;
+    const text = $('#entry-text-input').value.trim();
+    const placeName = $('#entry-place-input').value.trim();
+    const isMemory = $('#entry-star-input').checked;
+    const errEl = $('#entry-form-error');
+    errEl.style.display = 'none';
+
+    if(!title || !date){
+      errEl.textContent = 'Please add at least a title and a date.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    let location = null;
+    if(state.pickedLocation){
+      location = {...state.pickedLocation, name: placeName || state.pickedLocation.name};
+    } else if(placeName){
+      location = null; // no coords picked, just a name — stored as text only
+    }
+
+    setLoading(true, 'Saving your memory…');
+    try{
+      const id = state.editingId || crypto.randomUUID();
+      let mediaKey = null;
+      if(state.mediaData){
+        setLoading(true, 'Uploading media…');
+        try{
+          mediaKey = await Store.uploadMedia(state.userId, id, state.mediaData, state.mediaType);
+        }catch(uploadErr){
+          console.error('Upload failed:', uploadErr);
+          setLoading(false);
+          errEl.textContent = 'Photo/media upload failed: ' + (uploadErr.message || uploadErr.error || JSON.stringify(uploadErr));
+          errEl.style.display = 'block';
+          return;
+        }
+        state.mediaCache[id] = state.mediaData; // use local data immediately, refreshed with a signed URL on next load
+      } else if(state.editingId){
+        const existing = state.entries.find(e=>e.id === state.editingId);
+        mediaKey = existing ? existing.mediaKey : null;
+      }
+
+      const entryObj = {
+        id, type: state.selectedType, title, text, date,
+        location: location || (state.editingId ? (state.entries.find(e=>e.id===state.editingId)||{}).location : null) || (placeName ? {lat:null,lng:null,name:placeName} : null),
+        mediaKey, mediaType: state.mediaType, isMemory,
+        createdAt: state.editingId ? (state.entries.find(e=>e.id===state.editingId).createdAt) : null
+      };
+      if(location) entryObj.location = location;
+
+      setLoading(true, 'Saving your memory…');
+      if(state.editingId){
+        await Store.updateEntry(id, entryObj);
+        const idx = state.entries.findIndex(e=>e.id === state.editingId);
+        state.entries[idx] = entryObj;
+      } else {
+        entryObj.createdAt = await Store.insertEntry(entryObj, state.userId);
+        state.entries.push(entryObj);
+      }
+      setLoading(false);
+      entryOverlay.classList.remove('active');
+      showToast('Memory saved.');
+      renderTimeline();
+      if(state.view === 'map') renderMap();
+      if(state.view === 'corner') renderMemoryCorner();
+    }catch(err){
+      console.error(err);
+      setLoading(false);
+      errEl.textContent = 'Could not save: ' + (err.message || err.error_description || 'unknown error — check the browser console (F12).');
+      errEl.style.display = 'block';
+    }
+  });
+
+  // --- delete entry (from form) ---
+  $('#entry-delete-btn').addEventListener('click', async ()=>{
+    if(!state.editingId) return;
+    if(!confirm('Delete this memory? This cannot be undone.')) return;
+    await deleteEntryById(state.editingId);
+    entryOverlay.classList.remove('active');
+  });
+
+  async function deleteEntryById(id){
+    setLoading(true, 'Deleting…');
+    try{
+      const existing = state.entries.find(e=>e.id === id);
+      state.entries = state.entries.filter(e=>e.id !== id);
+      await Store.deleteEntry(id);
+      if(existing && existing.mediaKey) await Store.deleteMedia(existing.mediaKey);
+      delete state.mediaCache[id];
+      setLoading(false);
+      showToast('Memory deleted.');
+      renderTimeline();
+      if(state.view === 'map') renderMap();
+      if(state.view === 'corner') renderMemoryCorner();
+    }catch(err){
+      console.error(err);
+      setLoading(false);
+      showToast('Could not delete — please try again.', true);
+    }
+  }
+
+  // ================= DETAIL MODAL =================
+  async function openDetail(id){
+    const entry = state.entries.find(e=>e.id === id);
+    if(!entry) return;
+    const content = $('#detail-content');
+    let mediaHtml = '';
+    if(entry.mediaKey){
+      setLoading(true, 'Loading memory…');
+      const url = await getMediaCached(id);
+      setLoading(false);
+      if(url){
+        if(entry.type === 'photo') mediaHtml = `<img class="detail-media" src="${url}">`;
+        else if(entry.type === 'voice') mediaHtml = `<audio controls style="width:100%;margin-bottom:14px;" src="${url}"></audio>`;
+        else if(entry.type === 'video') mediaHtml = `<video class="detail-media" controls src="${url}"></video>`;
+      }
+    }
+    content.innerHTML = `
+      <h2>${typeIcon(entry.type)} ${escapeHtml(entry.title)} ${entry.isMemory ? '⭐' : ''}</h2>
+      <div class="detail-meta-row">
+        <span>${fmtDate(entry.date)}</span>
+        ${entry.location && entry.location.name ? `<span>📍 ${escapeHtml(entry.location.name)}</span>` : ''}
+        ${entry.location && entry.location.lat ? `<span>${entry.location.lat.toFixed(3)}, ${entry.location.lng.toFixed(3)}</span>` : ''}
+      </div>
+      ${mediaHtml}
+      <div class="detail-text">${escapeHtml(entry.text || 'No notes written.')}</div>
+    `;
+    detailOverlay.dataset.id = id;
+    detailOverlay.classList.add('active');
+  }
+
+  $('#detail-modal-close').addEventListener('click', ()=> detailOverlay.classList.remove('active'));
+  detailOverlay.addEventListener('click', (e)=>{ if(e.target === detailOverlay) detailOverlay.classList.remove('active'); });
+
+  $('#detail-delete-btn').addEventListener('click', async ()=>{
+    const id = detailOverlay.dataset.id;
+    if(!confirm('Delete this memory? This cannot be undone.')) return;
+    await deleteEntryById(id);
+    detailOverlay.classList.remove('active');
+  });
+
+  $('#detail-edit-btn').addEventListener('click', async ()=>{
+    const id = detailOverlay.dataset.id;
+    const entry = state.entries.find(e=>e.id === id);
+    if(!entry) return;
+    detailOverlay.classList.remove('active');
+    resetEntryForm();
+    state.editingId = id;
+    $('#entry-modal-title').textContent = 'Edit memory';
+    $('#entry-delete-btn').style.display = 'block';
+    setTypeUI(entry.type);
+    $('#entry-title-input').value = entry.title;
+    $('#entry-date-input').value = entry.date;
+    $('#entry-place-input').value = entry.location ? (entry.location.name||'') : '';
+    $('#entry-text-input').value = entry.text || '';
+    $('#entry-star-input').checked = !!entry.isMemory;
+    if(entry.mediaKey){
+      $('#media-drop').textContent = '✓ Existing media (upload a new file to replace)';
+      $('#media-drop').classList.add('has-file');
+      if(entry.type === 'voice'){
+        const url = await getMediaCached(id);
+        if(url){ $('#voice-preview').src = url; $('#voice-preview').style.display = 'block'; }
+      }
+    }
+    if(entry.location && entry.location.lat != null){
+      setTimeout(()=>{
+        if(state.pickerMap){
+          placePin(entry.location.lat, entry.location.lng, entry.location.name, true);
+        }
+      }, 150);
+    }
+    entryOverlay.classList.add('active');
+  });
+
+  // ---------------- init ----------------
+  setAuthMode('login');
+
+  // If there's already a valid Supabase session (e.g. page refresh),
+  // log the person straight back in instead of showing the auth screen.
+  (async ()=>{
+    setLoading(true, 'Checking for an existing session…');
+    const { data } = await sb.auth.getSession();
+    if(data && data.session){
+      const user = data.session.user;
+      const username = (user.user_metadata && user.user_metadata.username) || user.email.split('@')[0];
+      const displayName = (user.user_metadata && user.user_metadata.display_name) || username;
+      await enterApp(username, displayName, user.id);
+    } else {
+      setLoading(false);
+    }
+  })();
+})();
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(e => console.log('SW registration failed:', e));
+    });
+  }
+</script>
+</body>
+</html>
