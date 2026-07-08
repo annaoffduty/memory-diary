@@ -801,7 +801,7 @@
     state.markers = [];
     if(state.pathLine){ state.map.removeLayer(state.pathLine); state.pathLine = null; }
 
-    const withLoc = [...state.entries].filter(e=>e.location).sort((a,b)=> a.date.localeCompare(b.date));
+    const withLoc = [...state.entries].filter(e=>e.location && e.location.lat != null).sort((a,b)=> a.date.localeCompare(b.date));
     if(withLoc.length === 0){
       showToast('Pin a location on an entry to see it on the map.');
       setTimeout(()=> state.map && state.map.invalidateSize(), 50);
@@ -1100,11 +1100,25 @@
       return;
     }
 
-    let location = null;
-    if(state.pickedLocation){
-      location = {...state.pickedLocation, name: placeName || state.pickedLocation.name};
+    // Media-backed types must actually have media (new file staged, or existing media when editing).
+    if(state.selectedType !== 'note'){
+      const existingMedia = state.editingId && (state.entries.find(e=>e.id===state.editingId)||{}).mediaKey;
+      if(!state.mediaData && !existingMedia){
+        const noun = {photo:'photo', voice:'recording', video:'video'}[state.selectedType] || 'file';
+        errEl.textContent = 'Please add a ' + noun + ' for this entry, or switch the type to Note.';
+        errEl.style.display = 'block';
+        return;
+      }
+    }
+
+    // Resolve the location once: a picked pin (with coords), else a text-only place name, else nothing.
+    let location;
+    if(state.pickedLocation && state.pickedLocation.lat != null){
+      location = {...state.pickedLocation, name: placeName || state.pickedLocation.name || ''};
     } else if(placeName){
-      location = null; // no coords picked, just a name — stored as text only
+      location = {lat:null, lng:null, name: placeName};
+    } else {
+      location = null;
     }
 
     setLoading(true, 'Saving your memory…');
@@ -1130,11 +1144,10 @@
 
       const entryObj = {
         id, type: state.selectedType, title, text, date,
-        location: location || (state.editingId ? (state.entries.find(e=>e.id===state.editingId)||{}).location : null) || (placeName ? {lat:null,lng:null,name:placeName} : null),
+        location,
         mediaKey, mediaType: state.mediaType, isMemory,
         createdAt: state.editingId ? (state.entries.find(e=>e.id===state.editingId).createdAt) : null
       };
-      if(location) entryObj.location = location;
 
       setLoading(true, 'Saving your memory…');
       if(state.editingId){
