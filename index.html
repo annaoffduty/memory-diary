@@ -97,6 +97,29 @@
   .brand-row .dot{width:9px;height:9px;border-radius:50%;background:var(--gold);box-shadow:0 0 12px var(--gold);}
   .brand-row .name{font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
   .user-chip{display:flex;align-items:center;gap:10px;}
+  #diary-heading{
+    font-family:'Fraunces',serif;font-size:30px;font-weight:500;color:var(--paper);
+    margin:0 0 6px;padding-left:2px;display:flex;align-items:center;gap:10px;
+  }
+  #diary-heading .heading-emoji{font-size:28px;}
+  .zoom-hint{font-size:12px;color:var(--muted);margin:0 0 22px;padding-left:2px;}
+  .theme-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:6px;}
+  .theme-swatch{
+    border-radius:11px;padding:12px 8px;cursor:pointer;border:2.5px solid transparent;
+    text-align:center;font-size:12px;font-weight:600;color:#fff;position:relative;
+    transition:transform .12s;
+  }
+  .theme-swatch:hover{transform:translateY(-2px);}
+  .theme-swatch.selected{border-color:var(--ink-text, #24303D);box-shadow:0 0 0 2px rgba(0,0,0,0.15) inset;}
+  .theme-swatch .swatch-check{position:absolute;top:6px;right:8px;font-size:13px;display:none;}
+  .theme-swatch.selected .swatch-check{display:block;}
+  .emoji-input-row{display:flex;gap:8px;align-items:center;}
+  .emoji-input-row input{width:70px;text-align:center;font-size:20px;flex:none;}
+  .emoji-presets{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .emoji-preset-btn{
+    font-size:18px;padding:6px 9px;border-radius:8px;border:1.5px solid #ddd3bd;background:#fffdf8;
+  }
+  .emoji-preset-btn.selected{border-color:var(--ink-text,#24303D);background:#eee5d2;}
   .user-chip .avatar{
     width:30px;height:30px;border-radius:50%;background:var(--gold);
     display:flex;align-items:center;justify-content:center;color:var(--ink);
@@ -123,6 +146,10 @@
   main{flex:1;position:relative;}
   .view{display:none;padding:30px 22px 100px;max-width:900px;margin:0 auto;}
   .view.active{display:block;}
+  #timeline-content{transition:transform .22s ease, opacity .22s ease;transform-origin:center 20%;}
+  #timeline-content.zoom-transition{transform:scale(0.8);opacity:0;}
+  #view-map.fade-in{animation:mapZoomFadeIn .4s ease;}
+  @keyframes mapZoomFadeIn{from{opacity:0;transform:scale(1.06);}to{opacity:1;transform:scale(1);}}
 
   /* ---------- Timeline ---------- */
   .month-heading{
@@ -333,12 +360,15 @@
     <div class="user-chip">
       <div class="avatar" id="user-avatar">M</div>
       <span id="user-name-label"></span>
+      <button class="icon-btn" id="customize-btn" title="Customize your diary">🎨 Customize</button>
       <button class="icon-btn" id="logout-btn">Log out</button>
     </div>
   </header>
 
   <main>
     <div class="view active" id="view-timeline">
+      <div id="diary-heading"></div>
+      <div class="zoom-hint">Pinch out (or ctrl + scroll on a trackpad) to zoom into the map</div>
       <div id="timeline-content"></div>
     </div>
     <div class="view" id="view-map">
@@ -426,6 +456,39 @@
     <div class="modal-actions">
       <button class="btn-secondary" id="detail-edit-btn">Edit</button>
       <button class="btn-secondary btn-danger" id="detail-delete-btn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CUSTOMIZE / SETTINGS MODAL ============ -->
+<div class="modal-overlay" id="settings-modal-overlay">
+  <div class="modal">
+    <button class="modal-close" id="settings-modal-close">✕</button>
+    <h2>Customize your diary</h2>
+
+    <div class="field">
+      <label>Diary title (shown above your timeline)</label>
+      <input type="text" id="settings-title-input" placeholder="e.g. Maya's diary">
+    </div>
+
+    <div class="field">
+      <label>Background theme</label>
+      <div class="theme-grid" id="theme-grid"></div>
+    </div>
+
+    <div class="field">
+      <label>A little emoji touch (used on your timeline markers and heading)</label>
+      <div class="emoji-input-row">
+        <input type="text" id="settings-emoji-input" maxlength="4" placeholder="🌿">
+        <span style="font-size:12.5px;color:#8a8570;">Type any emoji, or leave blank for the default dot</span>
+      </div>
+      <div class="emoji-presets" id="emoji-presets"></div>
+    </div>
+
+    <div class="field-error" id="settings-error"></div>
+
+    <div class="modal-actions">
+      <button class="btn-primary" id="settings-save-btn" style="flex:1;">Save changes</button>
     </div>
   </div>
 </div>
@@ -595,11 +658,41 @@
     selectedType: 'note',
     mediaRecorder: null,
     recordedChunks: [],
-    recTimer: null
+    recTimer: null,
+    userSettings: { title: '', theme: 'night-ledger', emoji: '' }
   };
 
-  // ================= AUTH =================
-  let authMode = 'login';
+  // ---------------- Themes ----------------
+  const THEMES = {
+    'night-ledger': { label: 'Night Ledger', ink:'#1B2430', inkDeep:'#10161F', paper:'#F6F1E7', gold:'#D9A441', teal:'#3E7C7B', rose:'#B85C6B' },
+    'moonlit-plum': { label: 'Moonlit Plum', ink:'#241B2F', inkDeep:'#17111F', paper:'#F5ECF3', gold:'#B98BD1', teal:'#8C6FAE', rose:'#D17FA6' },
+    'forest-journal': { label: 'Forest Journal', ink:'#13211A', inkDeep:'#0C1712', paper:'#F2EEDE', gold:'#9CB26A', teal:'#4C7A63', rose:'#B98A5A' },
+    'ocean-log': { label: 'Ocean Log', ink:'#0F2430', inkDeep:'#0A1820', paper:'#EAF3F5', gold:'#4FB3BF', teal:'#3E7C9E', rose:'#B85C6B' },
+    'sunset-pages': { label: 'Sunset Pages', ink:'#2A1810', inkDeep:'#1C0F0A', paper:'#FAF1E4', gold:'#E2793D', teal:'#B5562F', rose:'#D14F4F' },
+    'lavender-dream': { label: 'Lavender Dream', ink:'#1E1B3A', inkDeep:'#141227', paper:'#F3F0FA', gold:'#9B8CE0', teal:'#6E7FC4', rose:'#B383C9' }
+  };
+  const EMOJI_PRESETS = ['🌿','✨','🌙','🌊','🍂','☕','🐾','🌸','📖','🕊️'];
+
+  function applyTheme(themeKey){
+    const t = THEMES[themeKey] || THEMES['night-ledger'];
+    const root = document.documentElement.style;
+    root.setProperty('--ink', t.ink);
+    root.setProperty('--ink-deep', t.inkDeep);
+    root.setProperty('--paper', t.paper);
+    root.setProperty('--gold', t.gold);
+    root.setProperty('--teal', t.teal);
+    root.setProperty('--rose', t.rose);
+  }
+
+  function renderDiaryHeading(){
+    const el = $('#diary-heading');
+    if(!el) return;
+    const title = state.userSettings.title || (state.displayName ? state.displayName + "'s diary" : 'Your diary');
+    const emoji = state.userSettings.emoji;
+    el.innerHTML = (emoji ? `<span class="heading-emoji">${escapeHtml(emoji)}</span>` : '') + escapeHtml(title);
+  }
+
+
 
   function setAuthMode(mode){
     authMode = mode;
@@ -650,11 +743,11 @@
           setAuthMode('login');
           return;
         }
-        await enterApp(username, displayName, data.user.id);
+        await enterApp(username, displayName, data.user.id, data.user.user_metadata);
       } else {
         const data = await Store.logIn(username, password);
         const displayName = (data.user.user_metadata && data.user.user_metadata.display_name) || username;
-        await enterApp(username, displayName, data.user.id);
+        await enterApp(username, displayName, data.user.id, data.user.user_metadata);
       }
     }catch(e){
       setLoading(false);
@@ -669,16 +762,24 @@
     }
   });
 
-  async function enterApp(username, displayName, userId){
+  async function enterApp(username, displayName, userId, metadata){
     state.username = username;
     state.displayName = displayName;
     state.userId = userId;
     state.entries = await Store.getEntries();
-    $('#user-avatar').textContent = displayName[0].toUpperCase();
+    const meta = metadata || {};
+    state.userSettings = {
+      title: meta.diary_title || '',
+      theme: meta.diary_theme || 'night-ledger',
+      emoji: meta.diary_emoji || ''
+    };
+    applyTheme(state.userSettings.theme);
+    $('#user-avatar').textContent = state.userSettings.emoji || displayName[0].toUpperCase();
     $('#user-name-label').textContent = displayName;
     $('#auth-screen').style.display = 'none';
     $('#app').style.display = 'flex';
     setLoading(false);
+    renderDiaryHeading();
     renderTimeline();
     initPickerMapIfNeeded();
     showToast('Welcome, ' + displayName + '.');
@@ -690,6 +791,7 @@
     state.userId = null;
     state.entries = [];
     state.mediaCache = {};
+    applyTheme('night-ledger');
     if(state.map){ state.map.remove(); state.map = null; }
     $('#app').style.display = 'none';
     $('#auth-screen').style.display = 'flex';
@@ -699,19 +801,82 @@
   });
 
   // ================= VIEW SWITCHING =================
+  function switchView(v){
+    $$('.view-toggle button').forEach(b=> b.classList.toggle('active', b.dataset.view === v));
+    state.view = v;
+    $$('.view').forEach(sec=>sec.classList.remove('active'));
+    $('#view-'+v).classList.add('active');
+    if(v === 'timeline') renderTimeline();
+    if(v === 'map') renderMap();
+    if(v === 'corner') renderMemoryCorner();
+  }
+
   $$('.view-toggle button').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      $$('.view-toggle button').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      const v = btn.dataset.view;
-      state.view = v;
-      $$('.view').forEach(sec=>sec.classList.remove('active'));
-      $('#view-'+v).classList.add('active');
-      if(v === 'timeline') renderTimeline();
-      if(v === 'map') renderMap();
-      if(v === 'corner') renderMemoryCorner();
-    });
+    btn.addEventListener('click', ()=> switchView(btn.dataset.view));
   });
+
+  // --- "zoom out" gesture: pinch out (or trackpad pinch) on the timeline
+  // zooms out into the map, the way Snapchat zooms from a feed into memories
+  // pinned on a map. ---
+  (function initZoomOutGesture(){
+    const timelineView = $('#view-timeline');
+    const timelineContent = $('#timeline-content');
+    let touchStartDist = null;
+    let gestureFired = false;
+    let wheelAccum = 0;
+    let wheelResetTimer = null;
+
+    function distance(touches){
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx*dx + dy*dy);
+    }
+
+    function triggerZoomOutToMap(){
+      if(gestureFired || state.view !== 'timeline') return;
+      gestureFired = true;
+      timelineContent.classList.add('zoom-transition');
+      setTimeout(()=>{
+        switchView('map');
+        timelineContent.classList.remove('zoom-transition');
+        $('#view-map').classList.add('fade-in');
+        setTimeout(()=> $('#view-map').classList.remove('fade-in'), 400);
+        gestureFired = false;
+      }, 220);
+    }
+
+    timelineView.addEventListener('touchstart', (e)=>{
+      if(e.touches.length === 2){
+        touchStartDist = distance(e.touches);
+      }
+    }, {passive:true});
+
+    timelineView.addEventListener('touchmove', (e)=>{
+      if(e.touches.length === 2 && touchStartDist){
+        const currentDist = distance(e.touches);
+        const scale = currentDist / touchStartDist;
+        if(scale < 0.72){
+          triggerZoomOutToMap();
+          touchStartDist = null;
+        }
+      }
+    }, {passive:true});
+
+    timelineView.addEventListener('touchend', ()=>{ touchStartDist = null; });
+
+    // Trackpad pinch (Chrome/Edge/Safari fire wheel events with ctrlKey
+    // set to true during a trackpad pinch gesture).
+    timelineView.addEventListener('wheel', (e)=>{
+      if(!e.ctrlKey || state.view !== 'timeline') return;
+      wheelAccum += e.deltaY;
+      clearTimeout(wheelResetTimer);
+      wheelResetTimer = setTimeout(()=>{ wheelAccum = 0; }, 400);
+      if(wheelAccum > 90){
+        triggerZoomOutToMap();
+        wheelAccum = 0;
+      }
+    }, {passive:true});
+  })();
 
   // ================= TIMELINE =================
   function typeIcon(type){
@@ -741,7 +906,7 @@
       }
       html += `
         <div class="entry-node">
-          <div class="entry-dot"></div>
+          <div class="entry-dot"${state.userSettings.emoji ? ' style="display:flex;align-items:center;justify-content:center;background:transparent;border:none;font-size:16px;"' : ''}>${state.userSettings.emoji ? escapeHtml(state.userSettings.emoji) : ''}</div>
           <div class="entry-card" data-type="${entry.type}" data-id="${entry.id}">
             <div class="entry-top">
               <div>
@@ -920,9 +1085,25 @@
     resetEntryForm();
     $('#entry-modal-title').textContent = 'New memory';
     entryOverlay.classList.add('active');
+    fixPickerMapSize();
   });
   $('#entry-modal-close').addEventListener('click', ()=> entryOverlay.classList.remove('active'));
   entryOverlay.addEventListener('click', (e)=>{ if(e.target === entryOverlay) entryOverlay.classList.remove('active'); });
+
+  // Leaflet maps render blank/broken tiles if they're initialized while
+  // hidden (display:none), which is exactly what happens here since the
+  // picker map loads behind a closed modal. Telling it to recalculate its
+  // size right after the modal becomes visible fixes the gray-tile/zoom bug.
+  function fixPickerMapSize(){
+    setTimeout(()=>{
+      if(state.pickerMap){
+        state.pickerMap.invalidateSize();
+        if(state.pickedLocation){
+          state.pickerMap.setView([state.pickedLocation.lat, state.pickedLocation.lng], state.pickerMap.getZoom());
+        }
+      }
+    }, 200);
+  }
 
   // --- location picker map (inside modal) ---
   function initPickerMapIfNeeded(){
@@ -1100,25 +1281,19 @@
       return;
     }
 
-    // Media-backed types must actually have media (new file staged, or existing media when editing).
-    if(state.selectedType !== 'note'){
-      const existingMedia = state.editingId && (state.entries.find(e=>e.id===state.editingId)||{}).mediaKey;
-      if(!state.mediaData && !existingMedia){
-        const noun = {photo:'photo', voice:'recording', video:'video'}[state.selectedType] || 'file';
-        errEl.textContent = 'Please add a ' + noun + ' for this entry, or switch the type to Note.';
-        errEl.style.display = 'block';
-        return;
-      }
+    // Non-note types need either a freshly staged file, or (when editing)
+    // media that already exists on the entry — otherwise we'd save a
+    // photo/voice/video entry with nothing to actually show.
+    const existingForType = state.editingId ? state.entries.find(e=>e.id === state.editingId) : null;
+    if(state.selectedType !== 'note' && !state.mediaData && !(existingForType && existingForType.mediaKey)){
+      errEl.textContent = 'Please add a photo/recording/video for this entry, or switch the type to Note.';
+      errEl.style.display = 'block';
+      return;
     }
 
-    // Resolve the location once: a picked pin (with coords), else a text-only place name, else nothing.
-    let location;
-    if(state.pickedLocation && state.pickedLocation.lat != null){
-      location = {...state.pickedLocation, name: placeName || state.pickedLocation.name || ''};
-    } else if(placeName){
-      location = {lat:null, lng:null, name: placeName};
-    } else {
-      location = null;
+    let location = null;
+    if(state.pickedLocation){
+      location = {...state.pickedLocation, name: placeName || state.pickedLocation.name};
     }
 
     setLoading(true, 'Saving your memory…');
@@ -1142,9 +1317,25 @@
         mediaKey = existing ? existing.mediaKey : null;
       }
 
+      // Single, clear resolver for location: a freshly picked/moved pin wins;
+      // otherwise a typed place name always reflects what's in the field
+      // right now (never falls back to a stale saved value); otherwise keep
+      // whatever the entry already had (or nothing, for a brand new entry).
+      let finalLocation;
+      if(location){
+        finalLocation = location;
+      } else if(placeName){
+        finalLocation = {lat:null, lng:null, name:placeName};
+      } else if(state.editingId){
+        const existing = state.entries.find(e=>e.id === state.editingId);
+        finalLocation = existing ? existing.location : null;
+      } else {
+        finalLocation = null;
+      }
+
       const entryObj = {
         id, type: state.selectedType, title, text, date,
-        location,
+        location: finalLocation,
         mediaKey, mediaType: state.mediaType, isMemory,
         createdAt: state.editingId ? (state.entries.find(e=>e.id===state.editingId).createdAt) : null
       };
@@ -1266,11 +1457,107 @@
     if(entry.location && entry.location.lat != null){
       setTimeout(()=>{
         if(state.pickerMap){
+          state.pickerMap.invalidateSize();
           placePin(entry.location.lat, entry.location.lng, entry.location.name, true);
         }
       }, 150);
     }
     entryOverlay.classList.add('active');
+    fixPickerMapSize();
+  });
+
+  // ================= CUSTOMIZE / SETTINGS =================
+  const settingsOverlay = $('#settings-modal-overlay');
+  let pendingTheme = 'night-ledger';
+  let pendingEmoji = '';
+
+  function buildThemeGrid(){
+    const grid = $('#theme-grid');
+    grid.innerHTML = Object.keys(THEMES).map(key=>{
+      const t = THEMES[key];
+      return `<div class="theme-swatch" data-theme="${key}" style="background:linear-gradient(135deg, ${t.ink}, ${t.gold})">
+        <span class="swatch-check">✓</span>${t.label}
+      </div>`;
+    }).join('');
+    $$('.theme-swatch', grid).forEach(sw=>{
+      sw.addEventListener('click', ()=>{
+        pendingTheme = sw.dataset.theme;
+        $$('.theme-swatch', grid).forEach(s=>s.classList.remove('selected'));
+        sw.classList.add('selected');
+        applyTheme(pendingTheme); // live preview
+      });
+    });
+  }
+
+  function buildEmojiPresets(){
+    const wrap = $('#emoji-presets');
+    wrap.innerHTML = EMOJI_PRESETS.map(e=>`<button type="button" class="emoji-preset-btn" data-emoji="${e}">${e}</button>`).join('');
+    $$('.emoji-preset-btn', wrap).forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        pendingEmoji = btn.dataset.emoji;
+        $('#settings-emoji-input').value = pendingEmoji;
+        $$('.emoji-preset-btn', wrap).forEach(b=>b.classList.remove('selected'));
+        btn.classList.add('selected');
+      });
+    });
+  }
+  buildThemeGrid();
+  buildEmojiPresets();
+
+  $('#customize-btn').addEventListener('click', ()=>{
+    pendingTheme = state.userSettings.theme;
+    pendingEmoji = state.userSettings.emoji;
+    $('#settings-title-input').value = state.userSettings.title;
+    $('#settings-emoji-input').value = state.userSettings.emoji;
+    $('#settings-error').style.display = 'none';
+    $$('.theme-swatch').forEach(s=> s.classList.toggle('selected', s.dataset.theme === pendingTheme));
+    $$('.emoji-preset-btn').forEach(b=> b.classList.toggle('selected', b.dataset.emoji === pendingEmoji));
+    settingsOverlay.classList.add('active');
+  });
+
+  $('#settings-modal-close').addEventListener('click', ()=>{
+    applyTheme(state.userSettings.theme); // revert any live preview
+    settingsOverlay.classList.remove('active');
+  });
+  settingsOverlay.addEventListener('click', (e)=>{
+    if(e.target === settingsOverlay){
+      applyTheme(state.userSettings.theme);
+      settingsOverlay.classList.remove('active');
+    }
+  });
+
+  $('#settings-emoji-input').addEventListener('input', (e)=>{
+    pendingEmoji = e.target.value.trim();
+  });
+
+  $('#settings-save-btn').addEventListener('click', async ()=>{
+    const title = $('#settings-title-input').value.trim();
+    const errEl = $('#settings-error');
+    errEl.style.display = 'none';
+    setLoading(true, 'Saving your style…');
+    try{
+      const { data: userData } = await sb.auth.getUser();
+      const existingMeta = (userData && userData.user && userData.user.user_metadata) || {};
+      const { error } = await sb.auth.updateUser({
+        data: { ...existingMeta, diary_title: title, diary_theme: pendingTheme, diary_emoji: pendingEmoji }
+      });
+      if(error) throw error;
+      state.userSettings = { title, theme: pendingTheme, emoji: pendingEmoji };
+      applyTheme(pendingTheme);
+      $('#user-avatar').textContent = pendingEmoji || state.displayName[0].toUpperCase();
+      renderDiaryHeading();
+      renderTimeline();
+      if(state.view === 'map') renderMap();
+      if(state.view === 'corner') renderMemoryCorner();
+      setLoading(false);
+      settingsOverlay.classList.remove('active');
+      showToast('Your diary now looks the way you like it.');
+    }catch(err){
+      console.error(err);
+      setLoading(false);
+      errEl.textContent = 'Could not save: ' + (err.message || 'please try again.');
+      errEl.style.display = 'block';
+    }
   });
 
   // ---------------- init ----------------
@@ -1285,7 +1572,7 @@
       const user = data.session.user;
       const username = (user.user_metadata && user.user_metadata.username) || user.email.split('@')[0];
       const displayName = (user.user_metadata && user.user_metadata.display_name) || username;
-      await enterApp(username, displayName, user.id);
+      await enterApp(username, displayName, user.id, user.user_metadata);
     } else {
       setLoading(false);
     }
