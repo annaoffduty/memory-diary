@@ -7,10 +7,11 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1B2430">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Hanken+Grotesk:wght@400;500;600;700&family=Bodoni+Moda:opsz,wght@6..96,500;6..96,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.min.js"></script>
 <style>
   :root{
     --ink:#1B2430;
@@ -44,7 +45,7 @@
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;height:100%;}
   body{
-    font-family:'Inter',sans-serif;
+    font-family:'Hanken Grotesk',sans-serif;
     background:radial-gradient(ellipse at top, #232f3f 0%, var(--ink) 45%, var(--ink-deep) 100%);
     color:var(--paper);
     min-height:100vh;
@@ -53,57 +54,90 @@
     text-rendering:optimizeLegibility;
   }
   ::selection{background:var(--gold-soft);color:var(--ink);}
-  h1,h2,h3,.display{font-family:'Fraunces',serif;font-optical-sizing:auto;letter-spacing:-0.015em;}
+  /* Newsreader: an editorial serif with real character and screen-tuned
+     optical sizing — its italic carries the "diary" voice. */
+  h1,h2,h3,.display{font-family:'Newsreader',serif;font-optical-sizing:auto;font-weight:500;letter-spacing:-0.01em;}
   :focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px;}
   input:focus-visible,textarea:focus-visible{outline:none;}
   .mono{font-family:'JetBrains Mono',monospace;}
   button{font-family:inherit;cursor:pointer;}
   a{color:inherit;}
-  input,textarea,select{font-family:'Inter',sans-serif;}
+  input,textarea,select{font-family:'Hanken Grotesk',sans-serif;}
 
   /* ---------- Auth screen ---------- */
   #auth-screen{
     min-height:100vh;display:flex;align-items:center;justify-content:center;
-    padding:24px;
+    padding:24px;position:relative;
+    /* burgundy with depth: a warm wine glow up top (a soft backlight behind
+       the card) falling to near-black burgundy at the edges. */
+    background:
+      radial-gradient(760px 560px at 50% 26%, rgba(150,46,72,0.5), transparent 62%),
+      radial-gradient(ellipse at top, #5E1A2C 0%, #3A0F1D 47%, #1B060E 100%);
+  }
+  /* faint film grain over the burgundy — analog, ledger-paper texture */
+  #auth-screen::before{
+    content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity:0.05;mix-blend-mode:soft-light;
   }
   .auth-card{
-    width:100%;max-width:400px;
-    background:var(--paper);
-    color:var(--ink-text);
-    border-radius:18px;
-    padding:38px 32px 32px;
-    box-shadow:0 30px 80px rgba(0,0,0,0.45);
-    position:relative;
-    overflow:hidden;
+    width:100%;max-width:392px;
+    /* warm gold/amber glass: a translucent honey-amber tint built on the gold
+       accent, kept dark enough that cream text and the gold thread stay legible
+       and opaque enough to read distinctly against the burgundy behind. */
+    background:color-mix(in srgb, var(--gold) 42%, rgba(22,15,6,0.72));
+    -webkit-backdrop-filter:blur(22px) saturate(120%);
+    backdrop-filter:blur(22px) saturate(120%);
+    color:var(--paper);
+    border:1.5px solid rgba(255,255,255,0.30);
+    border-radius:22px;
+    padding:42px 34px 30px;
+    box-shadow:0 30px 90px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+    position:relative;z-index:1;overflow:hidden;
   }
+  /* one gold thread, not a rainbow bar */
   .auth-card::before{
-    content:"";position:absolute;top:0;left:0;right:0;height:5px;
-    background:linear-gradient(90deg,var(--gold),var(--rose),var(--teal));
+    content:"";position:absolute;top:0;left:34px;right:34px;height:1px;
+    background:linear-gradient(90deg, transparent, var(--gold), transparent);opacity:.75;
   }
-  .auth-brand{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
-  .auth-brand .dot{width:10px;height:10px;border-radius:50%;background:var(--gold);}
-  .auth-brand span{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);}
-  .auth-card h1{font-size:30px;margin:6px 0 4px;font-weight:500;}
-  .auth-card p.sub{margin:0 0 26px;color:#6b7280;font-size:14.5px;line-height:1.5;}
+  .auth-brand{display:flex;align-items:center;gap:9px;margin-bottom:22px;}
+  .auth-brand .dot{width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px var(--gold);}
+  .auth-brand span{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);}
+  .auth-card h1{font-family:'Newsreader',serif;font-size:34px;margin:2px 0 28px;font-weight:400;color:var(--paper);letter-spacing:-0.01em;line-height:1.15;}
+  /* "Threads Log" as a distinctive wordmark — Bodoni Moda, a high-contrast
+     Didone set apart from the Newsreader heading around it. Kept on one line
+     so the logotype never splits across a wrap. */
+  .auth-wordmark{font-family:'Bodoni Moda',serif;font-optical-sizing:auto;font-weight:600;font-size:1.04em;letter-spacing:.005em;white-space:nowrap;}
+  .auth-card p.sub{margin:0 0 28px;color:var(--muted);font-size:14px;line-height:1.55;max-width:33ch;}
   .field{margin-bottom:16px;}
-  .field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:6px;color:#556;}
+  .field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:6px;color:var(--muted-ink);}
   .field input{
-    width:100%;padding:11px 13px;border-radius:9px;border:1.5px solid var(--line);
+    width:100%;padding:11px 13px;border-radius:10px;border:1.5px solid var(--line);
     background:var(--surface);font-size:15px;color:var(--ink-text);outline:none;
     transition:border-color .15s var(--ease-out), box-shadow .15s var(--ease-out);
   }
   .field input:focus{border-color:var(--gold);box-shadow:0 0 0 3px color-mix(in srgb, var(--gold) 22%, transparent);}
+  /* Auth glass card overrides: dark translucent fields + a light primary
+     button. Modal .field inputs / .btn-primary keep their light defaults. */
+  .auth-card .field label{color:color-mix(in srgb, var(--paper) 60%, transparent);font-size:11px;letter-spacing:.09em;text-transform:uppercase;}
+  .auth-card .field input{
+    background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.12);color:var(--paper);
+  }
+  .auth-card .field input::placeholder{color:rgba(255,255,255,0.3);}
+  .auth-card .field input:focus{border-color:var(--gold);box-shadow:0 0 0 3px color-mix(in srgb, var(--gold) 26%, transparent);}
   .btn-primary{
-    width:100%;padding:12px;border-radius:9px;border:none;
+    width:100%;padding:12px;border-radius:10px;border:none;
     background:var(--ink);color:var(--paper);font-weight:600;font-size:15px;
     margin-top:6px;transition:transform .16s var(--ease-out), background .18s ease;
   }
   .btn-primary:hover{background:color-mix(in srgb, var(--ink) 82%, var(--paper));}
   .btn-primary:active{transform:scale(0.97);}
-  .auth-switch{margin-top:18px;text-align:center;font-size:13.5px;color:#7a8290;}
-  .auth-switch button{background:none;border:none;color:var(--teal);font-weight:600;text-decoration:underline;padding:0;}
-  .auth-error{background:#fbe4e1;color:var(--danger);padding:9px 12px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none;}
-  .auth-note{font-size:12px;color:#9aa1ab;margin-top:16px;line-height:1.5;text-align:center;}
+  .auth-card .btn-primary{background:var(--paper);color:var(--ink);}
+  @media (hover:hover){ .auth-card .btn-primary:hover{background:var(--gold-soft);} }
+  .auth-switch{margin-top:20px;text-align:center;font-size:13.5px;color:var(--muted);}
+  .auth-switch button{background:none;border:none;color:var(--gold);font-weight:600;text-decoration:none;padding:0;border-bottom:1px solid color-mix(in srgb, var(--gold) 45%, transparent);}
+  .auth-error{background:color-mix(in srgb, var(--danger) 18%, transparent);color:#f0b7b1;border:1px solid color-mix(in srgb, var(--danger) 40%, transparent);padding:9px 12px;border-radius:9px;font-size:13px;margin-bottom:14px;display:none;}
+  .auth-note{font-size:11.5px;color:color-mix(in srgb, var(--paper) 38%, transparent);margin-top:18px;line-height:1.55;text-align:center;}
 
   /* ---------- App shell ---------- */
   #app{display:none;min-height:100vh;flex-direction:column;}
@@ -118,11 +152,11 @@
   .brand-row .name{font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
   .user-chip{display:flex;align-items:center;gap:10px;}
   #diary-heading{
-    font-family:'Fraunces',serif;font-size:30px;font-weight:500;color:var(--paper);
-    margin:0 0 6px;padding-left:2px;display:flex;align-items:center;gap:10px;
+    font-family:'Newsreader',serif;font-size:36px;font-weight:400;color:var(--paper);
+    letter-spacing:-0.015em;margin:6px 0 4px;padding-left:2px;display:flex;align-items:center;gap:12px;
   }
-  #diary-heading .heading-emoji{font-size:28px;}
-  .zoom-hint{font-size:12px;color:var(--muted);margin:0 0 22px;padding-left:2px;}
+  #diary-heading .heading-emoji{font-size:30px;}
+  .zoom-hint{font-size:11.5px;color:color-mix(in srgb, var(--muted) 78%, transparent);margin:0 0 30px;padding-left:2px;letter-spacing:.01em;}
   .theme-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:6px;}
   .theme-swatch{
     border-radius:11px;padding:12px 8px;cursor:pointer;border:2.5px solid transparent;
@@ -147,9 +181,30 @@
   .user-chip .avatar{
     width:30px;height:30px;border-radius:50%;background:var(--gold);
     display:flex;align-items:center;justify-content:center;color:var(--ink);
-    font-weight:700;font-size:13px;font-family:'Fraunces',serif;
+    font-weight:600;font-size:14px;font-family:'Newsreader',serif;
+    background-size:cover;background-position:center;overflow:hidden;
   }
+  .user-chip .avatar.has-image{background-color:transparent;}
   .user-chip span{font-size:13.5px;color:var(--paper);}
+  /* Profile-picture editor in the Customize modal */
+  .avatar-edit{display:flex;align-items:center;gap:16px;}
+  .avatar-preview{
+    width:66px;height:66px;flex:none;border-radius:50%;border:1.5px solid var(--line);
+    background:var(--gold);background-size:cover;background-position:center;overflow:hidden;position:relative;
+    display:flex;align-items:center;justify-content:center;color:var(--ink);
+    font-family:'Newsreader',serif;font-weight:600;font-size:27px;cursor:pointer;
+    transition:transform .14s var(--ease-out), box-shadow .16s var(--ease-out);
+  }
+  .avatar-preview.has-image{background-color:transparent;color:transparent;}
+  .avatar-preview:active{transform:scale(0.96);}
+  @media (hover:hover){ .avatar-preview:hover{box-shadow:0 0 0 4px color-mix(in srgb, var(--gold) 22%, transparent);} }
+  .avatar-preview::after{
+    content:"📷";position:absolute;right:-1px;bottom:-1px;font-size:13px;line-height:1;
+    background:var(--paper);border-radius:50%;padding:3px;opacity:0;transition:opacity .15s ease;
+  }
+  @media (hover:hover){ .avatar-preview:hover::after{opacity:1;} }
+  .avatar-edit-actions{display:flex;flex-direction:column;gap:8px;}
+  .avatar-edit-actions .btn-secondary{flex:none;padding:7px 14px;font-size:12.5px;}
   .icon-btn{
     background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);
     color:var(--paper);border-radius:8px;padding:7px 10px;font-size:12.5px;
@@ -186,77 +241,163 @@
   #view-map.fade-in{animation:mapZoomFadeIn .42s var(--ease-out);}
   @keyframes mapZoomFadeIn{from{opacity:0;transform:scale(1.05);}to{opacity:1;transform:scale(1);}}
 
-  /* ---------- Timeline ---------- */
+  /* ---------- Timeline (frosted glass over the gold thread) ---------- */
   .month-heading{
-    font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);
-    margin:34px 0 18px;padding-left:34px;font-weight:600;
+    font-size:11.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);
+    margin:40px 0 20px;padding-left:34px;font-weight:600;opacity:.9;
   }
-  .month-heading:first-child{margin-top:0;}
-  .thread-wrap{position:relative;padding-left:34px;}
+  .thread-line + .month-heading{margin-top:4px;}
+  .thread-wrap{position:relative;padding-left:0;}
+  /* the gold thread runs the full column, behind the glass cards */
+  /* The connecting line, styled to read as an actual piece of gold thread.
+     Colour stays theme-driven: every fill is built from var(--gold); the
+     white/black overlays are neutral shading only.
+       - layer 1 (top): a bright-centre / dark-edge sheen -> rounded, cord-like
+       - layer 2: a fine diagonal repeat -> twisted-fibre texture
+       - layer 3 (base): the gold, fading out at the very bottom
+     An SVG *mask* (alpha only) carves the strip into a gently waving strand
+     that tiles to any height; a drop-shadow hugs that wavy shape for depth. */
   .thread-line{
-    position:absolute;left:9px;top:0;bottom:0;width:2px;
-    background:linear-gradient(180deg, var(--gold) 0%, rgba(217,164,65,0.25) 100%);
+    position:absolute;left:17px;top:2px;bottom:2px;width:12px;
+    background:
+      linear-gradient(90deg, rgba(0,0,0,0.32), transparent 30%, rgba(255,255,255,0.34) 50%, transparent 70%, rgba(0,0,0,0.32)),
+      repeating-linear-gradient(30deg,
+        rgba(255,255,255,0.22) 0 1.4px, transparent 1.4px 3px,
+        rgba(0,0,0,0.16) 3px 4.2px, transparent 4.2px 6px),
+      linear-gradient(180deg, var(--gold), color-mix(in srgb, var(--gold) 45%, transparent) 98%);
+    -webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='12'%20height='40'%20viewBox='0%200%2012%2040'%3E%3Cpath%20d='M6,0C6,4,7.8,7,7.8,10C7.8,13,6,17,6,20C6,23,4.2,27,4.2,30C4.2,33,6,37,6,40'%20fill='none'%20stroke='%23fff'%20stroke-width='5'%20stroke-linecap='round'/%3E%3C/svg%3E");
+    mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='12'%20height='40'%20viewBox='0%200%2012%2040'%3E%3Cpath%20d='M6,0C6,4,7.8,7,7.8,10C7.8,13,6,17,6,20C6,23,4.2,27,4.2,30C4.2,33,6,37,6,40'%20fill='none'%20stroke='%23fff'%20stroke-width='5'%20stroke-linecap='round'/%3E%3C/svg%3E");
+    -webkit-mask-repeat:repeat-y; mask-repeat:repeat-y;
+    -webkit-mask-size:12px 40px; mask-size:12px 40px;
+    -webkit-mask-position:center top; mask-position:center top;
+    filter:drop-shadow(0 0 3.5px color-mix(in srgb, var(--gold) 42%, transparent)) drop-shadow(0.7px 0.6px 0.7px rgba(0,0,0,0.35));
   }
-  .entry-node{position:relative;margin-bottom:18px;}
+  /* frayed, loose ends: a few thin gold strands splaying unevenly at the very
+     top and very bottom of the single thread. Same gold (theme-driven fill,
+     alpha SVG mask for the strand shape); the top set is the bottom set
+     flipped. Only one pair exists because the thread is now one continuous run. */
+  .thread-wrap::before, .thread-wrap::after{
+    content:"";position:absolute;left:11px;width:24px;height:22px;pointer-events:none;
+    background:linear-gradient(180deg, var(--gold), color-mix(in srgb, var(--gold) 18%, transparent));
+    -webkit-mask:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='24'%20height='22'%20viewBox='0%200%2024%2022'%3E%3Cg%20fill='none'%20stroke='%23fff'%20stroke-width='1.1'%20stroke-linecap='round'%3E%3Cpath%20d='M12,0C11,7,10,12,9,21'/%3E%3Cpath%20d='M12,0C12.6,6,13.4,13,14.6,20'/%3E%3Cpath%20d='M12,0C11.5,5,11,11,11.2,17'/%3E%3Cpath%20d='M12,0C13,8,15.2,13,17,18.5'/%3E%3Cpath%20d='M12,0C10.2,6,7.5,11,5.5,16.5'/%3E%3C/g%3E%3C/svg%3E") no-repeat center/contain;
+    mask:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='24'%20height='22'%20viewBox='0%200%2024%2022'%3E%3Cg%20fill='none'%20stroke='%23fff'%20stroke-width='1.1'%20stroke-linecap='round'%3E%3Cpath%20d='M12,0C11,7,10,12,9,21'/%3E%3Cpath%20d='M12,0C12.6,6,13.4,13,14.6,20'/%3E%3Cpath%20d='M12,0C11.5,5,11,11,11.2,17'/%3E%3Cpath%20d='M12,0C13,8,15.2,13,17,18.5'/%3E%3Cpath%20d='M12,0C10.2,6,7.5,11,5.5,16.5'/%3E%3C/g%3E%3C/svg%3E") no-repeat center/contain;
+    filter:drop-shadow(0 0 2.5px color-mix(in srgb, var(--gold) 38%, transparent));
+  }
+  .thread-wrap::after{bottom:-16px;}
+  .thread-wrap::before{top:-16px;transform:scaleY(-1);}
+  .entry-node{position:relative;margin-bottom:16px;}
   .entry-dot{
-    position:absolute;left:-34px;top:22px;width:12px;height:12px;border-radius:50%;
+    position:absolute;left:17px;top:24px;width:13px;height:13px;border-radius:50%;z-index:2;
     background:var(--ink);border:2.5px solid var(--gold);
-    box-shadow:0 0 0 4px color-mix(in srgb, var(--gold) 16%, transparent);
+    box-shadow:0 0 0 4px color-mix(in srgb, var(--gold) 18%, transparent);
   }
+  /* type shows in the colour of the dot on the thread, not a heavy border */
+  .entry-node:has(.entry-card[data-type="voice"]) .entry-dot{border-color:var(--rose);box-shadow:0 0 0 4px color-mix(in srgb, var(--rose) 20%, transparent);}
+  .entry-node:has(.entry-card[data-type="video"]) .entry-dot{border-color:var(--teal);box-shadow:0 0 0 4px color-mix(in srgb, var(--teal) 20%, transparent);}
   .entry-card{
-    background:var(--paper);color:var(--ink-text);border-radius:14px;
-    padding:18px 20px;box-shadow:0 10px 26px rgba(0,0,0,0.25);
+    position:relative;z-index:1;
+    background:color-mix(in srgb, var(--paper) 9%, transparent);
+    -webkit-backdrop-filter:blur(16px) saturate(125%);
+    backdrop-filter:blur(16px) saturate(125%);
+    color:var(--paper);border-radius:16px;
+    padding:17px 20px 18px 34px;
+    border:1px solid rgba(255,255,255,0.12);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.12), 0 12px 34px rgba(0,0,0,0.28);
     cursor:pointer;
-    transition:transform .18s var(--ease-out), box-shadow .18s var(--ease-out), background-color .35s ease;
-    border-left:4px solid var(--gold);
+    transition:transform .18s var(--ease-out), box-shadow .18s var(--ease-out), border-color .18s var(--ease-out);
   }
-  .entry-card[data-type="voice"]{border-left-color:var(--rose);}
-  .entry-card[data-type="video"]{border-left-color:var(--teal);}
-  .entry-card[data-type="photo"]{border-left-color:var(--gold);}
-  @media (hover:hover){ .entry-card:hover{transform:translateY(-2px);box-shadow:0 16px 34px rgba(0,0,0,0.32);} }
+  @media (hover:hover){ .entry-card:hover{transform:translateY(-2px);border-color:color-mix(in srgb, var(--gold) 42%, rgba(255,255,255,0.12));box-shadow:inset 0 1px 0 rgba(255,255,255,0.16), 0 18px 40px rgba(0,0,0,0.34);} }
   .entry-card:active{transform:translateY(-1px) scale(0.994);}
+  /* Mood ribbon: a soft colour spine on the card's left edge, parallel to
+     the gold thread. Only present when a mood is set, so it never clutters.
+     Colours are fixed/semantic (readable across all six themes). */
+  .entry-card[data-mood]{--mood-c:var(--gold);}
+  .entry-card[data-mood="😊"]{--mood-c:#8FB08A;}
+  .entry-card[data-mood="😔"]{--mood-c:#6E86A8;}
+  .entry-card[data-mood="😍"]{--mood-c:#C77E92;}
+  .entry-card[data-mood="😤"]{--mood-c:#C77B5A;}
+  .entry-card[data-mood="😴"]{--mood-c:#9A8FC0;}
+  .entry-card[data-mood="✨"]{--mood-c:#D9A441;}
+  .entry-card[data-mood]::before{
+    content:"";position:absolute;left:0;top:15px;bottom:15px;width:3px;border-radius:3px;
+    background:var(--mood-c);box-shadow:0 0 9px color-mix(in srgb, var(--mood-c) 55%, transparent);
+  }
   .entry-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
-  .entry-title{font-size:17px;font-weight:500;margin:0 0 4px;letter-spacing:-0.01em;}
-  .entry-meta{font-size:11.5px;color:var(--muted-ink);display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .entry-title{font-family:'Newsreader',serif;font-size:19px;font-weight:500;margin:0 0 5px;letter-spacing:-0.01em;color:var(--paper);}
+  .entry-meta{font-size:11.5px;color:color-mix(in srgb, var(--paper) 52%, transparent);display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
   .entry-meta .tag{
-    display:inline-flex;align-items:center;gap:4px;background:var(--tag-bg);padding:2px 8px;border-radius:20px;
-    font-family:'JetBrains Mono',monospace;
+    display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,0.07);
+    border:1px solid rgba(255,255,255,0.08);padding:2px 9px;border-radius:20px;font-size:10.5px;letter-spacing:.01em;
   }
-  .entry-star{color:var(--gold);font-size:18px;flex-shrink:0;}
-  .entry-snippet{font-size:14px;color:var(--body-ink);margin-top:8px;line-height:1.55;}
-  .entry-thumb{margin-top:10px;border-radius:9px;max-width:100%;max-height:220px;object-fit:cover;display:block;}
+  .entry-star{color:var(--gold);font-size:17px;flex-shrink:0;}
+  .entry-snippet{font-size:14px;color:color-mix(in srgb, var(--paper) 72%, transparent);margin-top:9px;line-height:1.6;}
+  .entry-thumb{margin-top:12px;border-radius:11px;max-width:100%;max-height:220px;object-fit:cover;display:block;border:1px solid rgba(255,255,255,0.08);}
   .empty-state{
-    text-align:center;padding:60px 20px;color:var(--muted);
+    text-align:center;padding:72px 20px;color:var(--muted);
   }
-  .empty-state .display{font-size:22px;color:var(--paper);margin-bottom:8px;}
+  .empty-state .display{font-family:'Newsreader',serif;font-size:26px;font-weight:400;color:var(--paper);margin-bottom:10px;letter-spacing:-0.01em;}
 
   /* ---------- Map view ---------- */
   #map-container{
-    height:calc(100vh - 130px);border-radius:16px;overflow:hidden;
+    height:calc(100vh - 130px);border-radius:20px;overflow:hidden;
     border:1px solid rgba(255,255,255,0.1);
   }
   #leaflet-map{width:100%;height:100%;}
-  .leaflet-popup-content-wrapper{border-radius:10px;font-family:'Inter',sans-serif;}
-  .map-popup-title{font-family:'Fraunces',serif;font-size:15px;margin:0 0 4px;}
-  .map-popup-btn{background:var(--ink);color:var(--paper);border:none;padding:5px 10px;border-radius:6px;font-size:12px;margin-top:6px;transition:transform .14s var(--ease-out);}
+  /* entry preview popup styled as a rounded bento tile */
+  .leaflet-popup-content-wrapper{
+    border-radius:16px;font-family:'Hanken Grotesk',sans-serif;
+    background:var(--paper);color:var(--ink-text);
+    box-shadow:0 16px 44px rgba(0,0,0,0.42);
+  }
+  .leaflet-popup-content{margin:15px 17px;line-height:1.45;}
+  .leaflet-popup-tip{background:var(--paper);}
+  .map-popup-title{font-family:'Newsreader',serif;font-size:18px;font-weight:500;margin:0 0 4px;letter-spacing:-0.01em;color:var(--ink-text);}
+  .map-popup-btn{background:var(--ink);color:var(--paper);border:none;padding:7px 14px;border-radius:9px;font-size:12px;font-weight:600;margin-top:10px;transition:transform .14s var(--ease-out), background .16s ease;}
+  @media (hover:hover){ .map-popup-btn:hover{background:color-mix(in srgb, var(--ink) 82%, var(--paper));} }
   .map-popup-btn:active{transform:scale(0.96);}
 
-  /* ---------- Memory corner ---------- */
+  /* ---------- Memory corner (bento) ---------- */
   .corner-grid{
-    display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;
+    display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:158px;grid-auto-flow:dense;gap:12px;
   }
   .corner-tile{
-    background:var(--paper);color:var(--ink-text);border-radius:12px;padding:14px;
-    aspect-ratio:1/1;display:flex;flex-direction:column;justify-content:space-between;
+    background:var(--paper);color:var(--ink-text);border-radius:18px;padding:16px;
+    display:flex;flex-direction:column;justify-content:flex-start;
     cursor:pointer;transition:transform .18s var(--ease-out), box-shadow .18s var(--ease-out);
-    position:relative;overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,0.22);
+    position:relative;overflow:hidden;box-shadow:0 8px 22px rgba(0,0,0,0.24);
   }
-  @media (hover:hover){ .corner-tile:hover{transform:scale(1.02);box-shadow:0 12px 26px rgba(0,0,0,0.3);} }
+  /* photo tiles push their text to the bottom, over the gradient */
+  .corner-tile:has(img){justify-content:flex-end;}
+  /* bento rhythm: one large feature tile, an occasional wide tile */
+  .corner-tile:nth-child(6n+1){grid-column:span 2;grid-row:span 2;}
+  .corner-tile:nth-child(6n+4){grid-column:span 2;}
+  @media (hover:hover){ .corner-tile:hover{transform:translateY(-3px);box-shadow:0 16px 34px rgba(0,0,0,0.32);} }
   .corner-tile:active{transform:scale(0.985);}
-  .corner-tile img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.85;}
-  .corner-tile .corner-label{position:relative;z-index:1;font-weight:600;font-size:13px;
-    background:color-mix(in srgb, var(--paper) 90%, transparent);padding:4px 8px;border-radius:6px;display:inline-block;align-self:flex-start;}
-  .corner-tile .corner-star{position:relative;z-index:1;text-align:right;color:var(--gold);font-size:20px;}
+  .corner-tile img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.9;}
+  .corner-tile:has(img)::after{content:"";position:absolute;inset:0;background:linear-gradient(to top, rgba(0,0,0,0.66), rgba(0,0,0,0.05) 64%);}
+  .corner-text{position:relative;z-index:1;display:flex;flex-direction:column;gap:5px;max-width:100%;}
+  .corner-tile .corner-label{padding-right:20px;font-family:'Newsreader',serif;font-weight:500;font-size:17px;
+    letter-spacing:-0.01em;line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .corner-snippet{margin:0;font-size:12px;line-height:1.45;color:var(--muted-ink);
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+  .corner-tile:nth-child(6n+1) .corner-snippet{-webkit-line-clamp:5;}
+  /* photo tiles: white text over the darkened bottom, no chip needed */
+  .corner-tile:has(img) .corner-label{color:#fff;}
+  .corner-tile:has(img) .corner-snippet{color:rgba(255,255,255,0.9);-webkit-line-clamp:2;}
+  .corner-star{position:absolute;top:12px;right:13px;z-index:2;color:var(--gold);font-size:18px;line-height:1;}
+  .corner-tile:has(img) .corner-star{filter:drop-shadow(0 1px 3px rgba(0,0,0,0.6));}
+  @media (max-width:640px){
+    .corner-grid{grid-template-columns:repeat(2,1fr);grid-auto-rows:140px;}
+    .corner-tile:nth-child(6n+1){grid-row:span 1;}
+    .corner-tile:nth-child(6n+4){grid-column:auto;}
+  }
+
+  /* Frosted-glass fallback for reduced-transparency preference */
+  @media (prefers-reduced-transparency:reduce){
+    .auth-card{background:color-mix(in srgb, var(--gold) 40%, #17100a);-webkit-backdrop-filter:none;backdrop-filter:none;}
+    .entry-card{background:color-mix(in srgb, var(--paper) 12%, var(--ink));-webkit-backdrop-filter:none;backdrop-filter:none;}
+    header.topbar{background:var(--ink);-webkit-backdrop-filter:none;backdrop-filter:none;}
+  }
 
   /* ---------- FAB ---------- */
   .fab{
@@ -268,6 +409,11 @@
   }
   @media (hover:hover){ .fab:hover{transform:scale(1.06) rotate(90deg);box-shadow:0 14px 32px rgba(217,164,65,0.55);} }
   .fab:active{transform:scale(0.92);}
+  /* bulk import wizard */
+  .bulk-progress{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-ink);margin-bottom:14px;font-weight:600;}
+  .bulk-preview{width:100%;max-height:280px;object-fit:cover;border-radius:12px;margin-bottom:16px;background:var(--surface);display:block;border:1px solid var(--line);}
+  .bulk-preview:not([src]){min-height:120px;}
+  .bulk-loc-note{font-size:12.5px;color:var(--muted-ink);margin:-2px 0 12px;line-height:1.45;}
 
   /* ---------- Modal ---------- */
   .modal-overlay{
@@ -340,6 +486,19 @@
   }
   @media (hover:hover){ .star-toggle:hover{border-color:var(--gold);} }
   .star-toggle input{width:17px;height:17px;accent-color:var(--gold);}
+  /* Mood picker (in the paper modal) — matches the surface/line controls */
+  .mood-picker{display:flex;gap:8px;flex-wrap:wrap;}
+  .mood-btn{
+    font-size:20px;line-height:1;padding:7px 9px;border-radius:10px;
+    border:1.5px solid var(--line);background:var(--surface);filter:grayscale(.45);opacity:.7;
+    transition:border-color .16s var(--ease-out), background .16s ease, transform .14s var(--ease-out), opacity .16s ease, filter .16s ease;
+  }
+  .mood-btn:active{transform:scale(0.9);}
+  @media (hover:hover){ .mood-btn:hover{opacity:1;filter:none;border-color:var(--line-strong);} }
+  .mood-btn.selected{border-color:var(--gold);background:var(--tag-bg);opacity:1;filter:none;box-shadow:0 0 0 3px color-mix(in srgb, var(--gold) 18%, transparent);}
+  /* small mood emoji shown next to the date on cards / in detail */
+  .entry-mood{font-size:13px;line-height:1;}
+  .detail-mood{font-size:15px;line-height:1;}
   .modal-actions{display:flex;gap:10px;margin-top:20px;}
   .btn-secondary{
     flex:1;padding:11px;border-radius:9px;border:1.5px solid var(--line);background:var(--surface);
@@ -398,6 +557,47 @@
     }
     .loading-spin{animation-duration:.8s !important;animation-iteration-count:infinite !important;}
   }
+
+  /* ========= Auto theme: LIGHT appearance =========
+     Active only when "Auto (match device)" resolves to the device's light
+     mode (html[data-appearance="light"], set by applyTheme). The 6 named
+     themes never set this attribute, so their look is completely unchanged.
+     Flips the dark-built surfaces (body, chrome, timeline cards) to a warm
+     paper look with dark ink text; the gold thread accent stays the same. */
+  html[data-appearance="light"] body{
+    background:radial-gradient(ellipse at top, #FFFDF7 0%, #F4ECDD 55%, #EADFC9 100%);
+    color:var(--ink-text);
+  }
+  html[data-appearance="light"] header.topbar{
+    background:rgba(250,245,235,0.82);border-bottom:1px solid rgba(0,0,0,0.08);
+  }
+  html[data-appearance="light"] .view-toggle{background:rgba(0,0,0,0.05);border-color:rgba(0,0,0,0.08);}
+  html[data-appearance="light"] .view-toggle button:hover:not(.active){color:var(--ink-text);}
+  html[data-appearance="light"] .icon-btn{background:rgba(0,0,0,0.05);border-color:rgba(0,0,0,0.10);color:var(--ink-text);}
+  html[data-appearance="light"] .icon-btn:hover{background:rgba(0,0,0,0.09);}
+  html[data-appearance="light"] .user-chip span{color:var(--ink-text);}
+  html[data-appearance="light"] #diary-heading{color:var(--ink-text);}
+  html[data-appearance="light"] .zoom-hint{color:var(--muted-ink);}
+  /* timeline cards: solid warm paper with dark ink text instead of dark glass */
+  html[data-appearance="light"] .entry-card{
+    background:var(--paper);color:var(--ink-text);
+    border:1px solid rgba(0,0,0,0.07);
+    -webkit-backdrop-filter:none;backdrop-filter:none;
+    box-shadow:0 8px 22px rgba(70,52,20,0.12);
+  }
+  html[data-appearance="light"] .entry-card:hover{
+    border-color:color-mix(in srgb, var(--gold) 55%, rgba(0,0,0,0.08));
+    box-shadow:0 14px 30px rgba(70,52,20,0.16);
+  }
+  html[data-appearance="light"] .entry-title{color:var(--ink-text);}
+  html[data-appearance="light"] .entry-meta{color:var(--muted-ink);}
+  html[data-appearance="light"] .entry-meta .tag{background:var(--tag-bg);border-color:rgba(0,0,0,0.06);}
+  html[data-appearance="light"] .entry-snippet{color:var(--body-ink);}
+  html[data-appearance="light"] .entry-thumb{border-color:rgba(0,0,0,0.08);}
+  html[data-appearance="light"] .empty-state{color:var(--muted-ink);}
+  html[data-appearance="light"] .empty-state .display{color:var(--ink-text);}
+  html[data-appearance="light"] #map-container{border-color:rgba(0,0,0,0.12);}
+  html[data-appearance="light"] .corner-tile{box-shadow:0 8px 20px rgba(70,52,20,0.14);}
 </style>
 </head>
 <body>
@@ -407,9 +607,7 @@
 <!-- ============ AUTH SCREEN ============ -->
 <div id="auth-screen">
   <div class="auth-card">
-    <div class="auth-brand"><div class="dot"></div><span>Thread</span></div>
-    <h1 id="auth-title">Welcome back</h1>
-    <p class="sub" id="auth-sub">Log in to your memory diary. Your entries are private to your account.</p>
+    <h1 id="auth-title">Welcome to <span class="auth-wordmark">Threads Log</span></h1>
     <div class="auth-error" id="auth-error"></div>
 
     <div id="signup-name-field" class="field" style="display:none;">
@@ -429,7 +627,6 @@
       <span id="auth-switch-text">New here?</span>
       <button id="auth-switch-btn">Create an account</button>
     </div>
-    <p class="auth-note">Each account's entries are fully separate — no one else can see your diary. Passwords are hashed before storage.</p>
   </div>
 </div>
 
@@ -438,7 +635,7 @@
   <header class="topbar">
     <div class="brand-row">
       <div class="dot"></div>
-      <span class="name">Thread</span>
+      <span class="name">Threads Log</span>
     </div>
     <div class="view-toggle">
       <button data-view="timeline" class="active">Timeline</button>
@@ -506,7 +703,7 @@
     <div class="field" id="media-field">
       <label id="media-field-label">Add a photo</label>
       <div class="media-drop" id="media-drop">Click to choose a file</div>
-      <input type="file" id="media-file-input" accept="image/*" style="display:none;">
+      <input type="file" id="media-file-input" accept="image/*" multiple style="display:none;">
       <div class="voice-controls" id="voice-controls" style="display:none;margin-top:8px;">
         <button type="button" class="rec-btn" id="rec-btn">● Record (max 60s)</button>
         <span class="loc-status" id="rec-status"></span>
@@ -520,6 +717,18 @@
       <div class="loc-picker" id="loc-picker"></div>
       <div class="loc-status" id="loc-status">No location set</div>
       <button type="button" class="btn-secondary" id="clear-pin-btn" style="margin-top:6px;padding:7px 12px;font-size:12.5px;">✕ Clear pin</button>
+    </div>
+
+    <div class="field">
+      <label>Mood (optional)</label>
+      <div class="mood-picker" id="mood-picker">
+        <button type="button" class="mood-btn" data-mood="😊" title="Calm">😊</button>
+        <button type="button" class="mood-btn" data-mood="😔" title="Low">😔</button>
+        <button type="button" class="mood-btn" data-mood="😍" title="Loved">😍</button>
+        <button type="button" class="mood-btn" data-mood="😤" title="Frustrated">😤</button>
+        <button type="button" class="mood-btn" data-mood="😴" title="Tired">😴</button>
+        <button type="button" class="mood-btn" data-mood="✨" title="Excited">✨</button>
+      </div>
     </div>
 
     <label class="star-toggle">
@@ -555,6 +764,20 @@
     <h2>Customize your diary</h2>
 
     <div class="field">
+      <label>Profile picture</label>
+      <div class="avatar-edit">
+        <button type="button" class="avatar-preview" id="avatar-preview" title="Upload a profile picture">
+          <span id="avatar-preview-fallback">M</span>
+        </button>
+        <div class="avatar-edit-actions">
+          <button type="button" class="btn-secondary" id="avatar-upload-btn">Upload photo</button>
+          <button type="button" class="btn-secondary" id="avatar-remove-btn" style="display:none;">Remove</button>
+        </div>
+      </div>
+      <input type="file" id="avatar-file-input" accept="image/*" style="display:none;">
+    </div>
+
+    <div class="field">
       <label>Diary title (shown above your timeline)</label>
       <input type="text" id="settings-title-input" placeholder="e.g. Maya's diary">
     </div>
@@ -577,6 +800,47 @@
 
     <div class="modal-actions">
       <button class="btn-primary" id="settings-save-btn" style="flex:1;">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ BULK IMPORT WIZARD MODAL ============ -->
+<div class="modal-overlay" id="bulk-modal-overlay">
+  <div class="modal">
+    <button class="modal-close" id="bulk-modal-close">✕</button>
+    <h2>Bulk import</h2>
+    <div class="bulk-progress" id="bulk-progress">Photo 1 of 1</div>
+    <img class="bulk-preview" id="bulk-preview" alt="">
+
+    <div class="field">
+      <label>Title</label>
+      <input type="text" id="bulk-title-input" placeholder="A name for this memory (optional)">
+    </div>
+    <div class="row-2">
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="bulk-date-input">
+      </div>
+      <div class="field">
+        <label>Place name (optional)</label>
+        <input type="text" id="bulk-place-input" placeholder="e.g. Queenstown, NZ">
+        <button type="button" class="btn-secondary" id="bulk-locate-btn" style="margin-top:6px;padding:6px;font-size:12px;">🔍 Find on map</button>
+      </div>
+    </div>
+    <div class="bulk-loc-note" id="bulk-loc-note"></div>
+
+    <div class="field">
+      <label>Pin it on the map — from the photo's GPS if available, or set your own</label>
+      <div class="loc-picker" id="bulk-loc-picker"></div>
+      <div class="loc-status" id="bulk-loc-status">No location set</div>
+      <button type="button" class="btn-secondary" id="bulk-clear-pin" style="margin-top:6px;padding:7px 12px;font-size:12.5px;">✕ Clear pin</button>
+    </div>
+
+    <div class="field-error" id="bulk-error"></div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" id="bulk-skip-btn">Skip this one</button>
+      <button class="btn-primary" id="bulk-save-btn" style="flex:2;">Save &amp; Next</button>
     </div>
   </div>
 </div>
@@ -674,14 +938,14 @@
       return (data||[]).map(row=>({
         id: row.id, type: row.type, title: row.title, text: row.text,
         date: row.date, location: row.location, mediaKey: row.media_path,
-        mediaType: row.media_type, isMemory: row.is_memory, createdAt: row.created_at
+        mediaType: row.media_type, isMemory: row.is_memory, mood: row.mood, createdAt: row.created_at
       }));
     },
     async insertEntry(entry, userId){
       const { data, error } = await sb.from('entries').insert({
         id: entry.id, user_id: userId, type: entry.type, title: entry.title, text: entry.text,
         date: entry.date, location: entry.location, media_path: entry.mediaKey,
-        media_type: entry.mediaType, is_memory: entry.isMemory
+        media_type: entry.mediaType, is_memory: entry.isMemory, mood: entry.mood
       }).select().single();
       if(error) throw error;
       return data.created_at;
@@ -690,7 +954,7 @@
       const { error } = await sb.from('entries').update({
         type: entry.type, title: entry.title, text: entry.text,
         date: entry.date, location: entry.location, media_path: entry.mediaKey,
-        media_type: entry.mediaType, is_memory: entry.isMemory
+        media_type: entry.mediaType, is_memory: entry.isMemory, mood: entry.mood
       }).eq('id', id);
       if(error) throw error;
     },
@@ -714,6 +978,23 @@
     async deleteMedia(path){
       if(!path) return;
       try{ await sb.storage.from('Memories').remove([path]); }catch(e){}
+    },
+    // Profile pictures — same upload/signed-URL pattern as media, against the
+    // private "avatars" bucket. Fixed path per user so re-upload replaces it.
+    async uploadAvatar(userId, dataUrl){
+      const blob = dataUrlToBlob(dataUrl);
+      const path = `${userId}/avatar.jpg`;
+      const { error } = await sb.storage.from('avatars').upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
+      if(error) throw error;
+      return path;
+    },
+    async getAvatarUrl(path){
+      const { data, error } = await sb.storage.from('avatars').createSignedUrl(path, 3600);
+      if(error) return null;
+      return data.signedUrl;
+    },
+    async removeAvatar(userId){
+      try{ await sb.storage.from('avatars').remove([`${userId}/avatar.jpg`]); }catch(e){}
     }
   };
 
@@ -744,10 +1025,15 @@
     mediaData: null,      // base64 data url staged for save
     mediaType: null,
     selectedType: 'note',
+    selectedMood: null,
     mediaRecorder: null,
     recordedChunks: [],
     recTimer: null,
-    userSettings: { title: '', theme: 'night-ledger', emoji: '' }
+    // bulk import wizard
+    bulkItems: [], bulkIndex: 0, bulkImported: 0, bulkTotal: 0,
+    bulkPicked: null, bulkMap: null, bulkMarker: null,
+    avatarUrl: null,   // signed url (or staged data url) for the profile picture
+    userSettings: { title: '', theme: 'night-ledger', emoji: '', avatarPath: null }
   };
 
   // ---------------- Themes ----------------
@@ -761,16 +1047,40 @@
   };
   const EMOJI_PRESETS = ['🌿','✨','🌙','🌊','🍂','☕','🐾','🌸','📖','🕊️'];
 
+  // "Auto (match device)" resolves to one of these two palettes based on the
+  // OS light/dark setting. Dark closely matches Night Ledger; light is a warm
+  // paper look with the SAME gold accent. The structural light-mode styling
+  // (light body/chrome/cards) lives in the scoped html[data-appearance="light"]
+  // CSS block, since the app is otherwise built for a dark background.
+  const AUTO_DARK  = { ink:'#1B2430', inkDeep:'#10161F', paper:'#F6F1E7', gold:'#D9A441', teal:'#3E7C7B', rose:'#B85C6B' };
+  const AUTO_LIGHT = { ink:'#2C2822', inkDeep:'#211D17', paper:'#FBF7EE', gold:'#D9A441', teal:'#3E7C7B', rose:'#B85C6B' };
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+
   function applyTheme(themeKey){
-    const t = THEMES[themeKey] || THEMES['night-ledger'];
-    const root = document.documentElement.style;
-    root.setProperty('--ink', t.ink);
-    root.setProperty('--ink-deep', t.inkDeep);
-    root.setProperty('--paper', t.paper);
-    root.setProperty('--gold', t.gold);
-    root.setProperty('--teal', t.teal);
-    root.setProperty('--rose', t.rose);
+    const root = document.documentElement;
+    let t;
+    if(themeKey === 'auto'){
+      const dark = prefersDark.matches;
+      t = dark ? AUTO_DARK : AUTO_LIGHT;
+      if(dark) root.removeAttribute('data-appearance');
+      else root.setAttribute('data-appearance', 'light');
+    } else {
+      t = THEMES[themeKey] || THEMES['night-ledger'];
+      root.removeAttribute('data-appearance');
+    }
+    const s = root.style;
+    s.setProperty('--ink', t.ink);
+    s.setProperty('--ink-deep', t.inkDeep);
+    s.setProperty('--paper', t.paper);
+    s.setProperty('--gold', t.gold);
+    s.setProperty('--teal', t.teal);
+    s.setProperty('--rose', t.rose);
   }
+
+  // Live-switch when the OS light/dark setting changes, but only while on Auto.
+  prefersDark.addEventListener('change', ()=>{
+    if(state.userSettings.theme === 'auto') applyTheme('auto');
+  });
 
   function renderDiaryHeading(){
     const el = $('#diary-heading');
@@ -778,6 +1088,26 @@
     const title = state.userSettings.title || (state.displayName ? state.displayName + "'s diary" : 'Your diary');
     const emoji = state.userSettings.emoji;
     el.innerHTML = (emoji ? `<span class="heading-emoji">${escapeHtml(emoji)}</span>` : '') + escapeHtml(title);
+  }
+
+  // Paints the header avatar circle: profile picture if one is set (fetched
+  // via a signed URL like entry photos, cached on state.avatarUrl), else the
+  // emoji / first-initial fallback.
+  async function refreshHeaderAvatar(){
+    const el = $('#user-avatar');
+    if(!el) return;
+    if(state.userSettings.avatarPath){
+      if(!state.avatarUrl) state.avatarUrl = await Store.getAvatarUrl(state.userSettings.avatarPath);
+      if(state.avatarUrl){
+        el.style.backgroundImage = `url("${state.avatarUrl}")`;
+        el.classList.add('has-image');
+        el.textContent = '';
+        return;
+      }
+    }
+    el.style.backgroundImage = '';
+    el.classList.remove('has-image');
+    el.textContent = state.userSettings.emoji || (state.displayName ? state.displayName[0].toUpperCase() : '?');
   }
 
 
@@ -789,15 +1119,11 @@
     authMode = mode;
     $('#auth-error').style.display = 'none';
     if(mode === 'login'){
-      $('#auth-title').textContent = 'Welcome back';
-      $('#auth-sub').textContent = 'Log in to your memory diary. Your entries are private to your account.';
       $('#signup-name-field').style.display = 'none';
       $('#auth-submit-btn').textContent = 'Log in';
       $('#auth-switch-text').textContent = 'New here?';
       $('#auth-switch-btn').textContent = 'Create an account';
     } else {
-      $('#auth-title').textContent = 'Start your diary';
-      $('#auth-sub').textContent = 'Create an account. Your entries stay separate from everyone else\'s.';
       $('#signup-name-field').style.display = 'block';
       $('#auth-submit-btn').textContent = 'Create account';
       $('#auth-switch-text').textContent = 'Already have an account?';
@@ -814,6 +1140,14 @@
     el.textContent = msg;
     el.style.display = 'block';
   }
+
+  // Pressing Enter in any auth field submits, same as clicking the button.
+  ['#auth-username','#auth-password','#signup-name'].forEach(sel=>{
+    const el = $(sel);
+    if(el) el.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter'){ e.preventDefault(); $('#auth-submit-btn').click(); }
+    });
+  });
 
   $('#auth-submit-btn').addEventListener('click', async ()=>{
     const username = $('#auth-username').value.trim().toLowerCase();
@@ -862,10 +1196,12 @@
     state.userSettings = {
       title: meta.diary_title || '',
       theme: meta.diary_theme || 'night-ledger',
-      emoji: meta.diary_emoji || ''
+      emoji: meta.diary_emoji || '',
+      avatarPath: meta.avatar_path || null
     };
+    state.avatarUrl = null;
     applyTheme(state.userSettings.theme);
-    $('#user-avatar').textContent = state.userSettings.emoji || displayName[0].toUpperCase();
+    refreshHeaderAvatar();
     $('#user-name-label').textContent = displayName;
     $('#auth-screen').style.display = 'none';
     $('#app').style.display = 'flex';
@@ -882,6 +1218,7 @@
     state.userId = null;
     state.entries = [];
     state.mediaCache = {};
+    state.avatarUrl = null;
     applyTheme('night-ledger');
     if(state.map){ state.map.remove(); state.map = null; }
     $('#app').style.display = 'none';
@@ -984,26 +1321,27 @@
       </div>`;
       return;
     }
-    let html = '';
+    // One continuous thread for the whole timeline: a single thread-wrap and
+    // thread-line, with the month headings sitting inside it as siblings so
+    // the thread runs unbroken behind them from first entry to last.
+    let html = '<div class="thread-wrap"><div class="thread-line"></div>';
     let currentMonth = null;
-    let openThread = false;
     sorted.forEach(entry=>{
       const mk = monthKey(entry.date);
       if(mk !== currentMonth){
-        if(openThread) html += `</div></div>`;
-        html += `<div class="month-heading">${mk}</div><div class="thread-wrap"><div class="thread-line"></div>`;
+        html += `<div class="month-heading">${mk}</div>`;
         currentMonth = mk;
-        openThread = true;
       }
       html += `
         <div class="entry-node">
           <div class="entry-dot"${state.userSettings.emoji ? ' style="display:flex;align-items:center;justify-content:center;background:transparent;border:none;font-size:16px;"' : ''}>${state.userSettings.emoji ? escapeHtml(state.userSettings.emoji) : ''}</div>
-          <div class="entry-card" data-type="${entry.type}" data-id="${entry.id}">
+          <div class="entry-card" data-type="${entry.type}"${entry.mood ? ` data-mood="${entry.mood}"` : ''} data-id="${entry.id}">
             <div class="entry-top">
               <div>
-                <div class="entry-title">${typeIcon(entry.type)} ${escapeHtml(entry.title)}</div>
+                <div class="entry-title">${escapeHtml(entry.title)}</div>
                 <div class="entry-meta">
                   <span class="tag">${fmtDate(entry.date)}</span>
+                  ${entry.mood ? `<span class="entry-mood">${entry.mood}</span>` : ''}
                   ${entry.location ? `<span class="tag">📍 ${escapeHtml(entry.location.name || 'Pinned')}</span>` : ''}
                 </div>
               </div>
@@ -1014,7 +1352,7 @@
           </div>
         </div>`;
     });
-    if(openThread) html += `</div></div>`;
+    html += `</div>`;
     container.innerHTML = html;
 
     $$('.entry-card', container).forEach(card=>{
@@ -1076,7 +1414,7 @@
         fillOpacity: 0.9
       }).addTo(state.map);
       marker.bindPopup(`
-        <div class="map-popup-title">${typeIcon(entry.type)} ${escapeHtml(entry.title)}</div>
+        <div class="map-popup-title">${escapeHtml(entry.title)}</div>
         <div style="font-size:12px;color:#777;">${fmtDate(entry.date)} · ${escapeHtml(entry.location.name || '')}</div>
         <button class="map-popup-btn" data-open-id="${entry.id}">Open memory</button>
       `);
@@ -1113,8 +1451,11 @@
     container.innerHTML = `<div class="corner-grid">${memories.map(e=>`
       <div class="corner-tile" data-id="${e.id}">
         ${e.mediaKey && e.type==='photo' ? `<img data-lazy-media="${e.id}" alt="">` : ''}
-        <span class="corner-label">${typeIcon(e.type)} ${escapeHtml(truncate(e.title,18))}</span>
         <span class="corner-star">⭐</span>
+        <div class="corner-text">
+          <span class="corner-label">${escapeHtml(truncate(e.title,40))}</span>
+          ${e.text ? `<p class="corner-snippet">${escapeHtml(truncate(e.text,200))}</p>` : ''}
+        </div>
       </div>`).join('')}</div>`;
     $$('.corner-tile', container).forEach(tile=>{
       tile.addEventListener('click', ()=> openDetail(tile.dataset.id));
@@ -1151,6 +1492,7 @@
     $('#entry-form-error').style.display = 'none';
     $('#entry-delete-btn').style.display = 'none';
     setTypeUI('note');
+    setMoodUI(null);
     if(state.pickerMarker){ state.pickerMap.removeLayer(state.pickerMarker); state.pickerMarker = null; }
   }
 
@@ -1164,12 +1506,23 @@
     $('#media-field').style.display = type === 'note' ? 'none' : 'block';
     voiceControls.style.display = type === 'voice' ? 'flex' : 'none';
     drop.style.display = (type === 'photo' || type === 'video') ? 'block' : 'none';
-    if(type === 'photo'){ label.textContent = 'Add a photo'; fileInput.accept = 'image/*'; }
-    if(type === 'video'){ label.textContent = 'Add a short video (large files may not save — keep under ~4MB)'; fileInput.accept = 'video/*'; }
+    if(type === 'photo'){ label.textContent = 'Add a photo (pick several to import them as a batch)'; fileInput.accept = 'image/*'; fileInput.multiple = true; }
+    if(type === 'video'){ label.textContent = 'Add a short video (large files may not save — keep under ~4MB)'; fileInput.accept = 'video/*'; fileInput.multiple = false; }
   }
 
   $$('.type-btn').forEach(btn=>{
     btn.addEventListener('click', ()=> setTypeUI(btn.dataset.type));
+  });
+
+  // Mood picker — select one, or click the selected one again to clear it.
+  function setMoodUI(mood){
+    state.selectedMood = mood || null;
+    $$('.mood-btn').forEach(b=> b.classList.toggle('selected', b.dataset.mood === state.selectedMood));
+  }
+  $$('.mood-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      setMoodUI(state.selectedMood === btn.dataset.mood ? null : btn.dataset.mood);
+    });
   });
 
   $('#fab-add').addEventListener('click', ()=>{
@@ -1247,6 +1600,12 @@
   // --- photo/video file handling ---
   $('#media-drop').addEventListener('click', ()=> $('#media-file-input').click());
   $('#media-file-input').addEventListener('change', async (e)=>{
+    // More than one photo selected -> hand off to the step-through bulk wizard.
+    // Exactly one photo (or any video) keeps the existing single-entry path.
+    if(state.selectedType === 'photo'){
+      const imgs = Array.from(e.target.files || []).filter(f=> f.type.startsWith('image/'));
+      if(imgs.length > 1){ e.target.value = ''; startBulkImport(imgs); return; }
+    }
     const file = e.target.files[0];
     if(!file) return;
     $('#media-error').style.display = 'none';
@@ -1427,7 +1786,7 @@
       const entryObj = {
         id, type: state.selectedType, title, text, date,
         location: finalLocation,
-        mediaKey, mediaType: state.mediaType, isMemory,
+        mediaKey, mediaType: state.mediaType, isMemory, mood: state.selectedMood,
         createdAt: state.editingId ? (state.entries.find(e=>e.id===state.editingId).createdAt) : null
       };
 
@@ -1499,9 +1858,10 @@
       }
     }
     content.innerHTML = `
-      <h2>${typeIcon(entry.type)} ${escapeHtml(entry.title)} ${entry.isMemory ? '⭐' : ''}</h2>
+      <h2>${escapeHtml(entry.title)} ${entry.isMemory ? '⭐' : ''}</h2>
       <div class="detail-meta-row">
         <span>${fmtDate(entry.date)}</span>
+        ${entry.mood ? `<span class="detail-mood">${entry.mood}</span>` : ''}
         ${entry.location && entry.location.name ? `<span>📍 ${escapeHtml(entry.location.name)}</span>` : ''}
         ${entry.location && entry.location.lat ? `<span>${entry.location.lat.toFixed(3)}, ${entry.location.lng.toFixed(3)}</span>` : ''}
       </div>
@@ -1537,6 +1897,7 @@
     $('#entry-place-input').value = entry.location ? (entry.location.name||'') : '';
     $('#entry-text-input').value = entry.text || '';
     $('#entry-star-input').checked = !!entry.isMemory;
+    setMoodUI(entry.mood);
     if(entry.mediaKey){
       $('#media-drop').textContent = '✓ Existing media (upload a new file to replace)';
       $('#media-drop').classList.add('has-file');
@@ -1561,15 +1922,57 @@
   const settingsOverlay = $('#settings-modal-overlay');
   let pendingTheme = 'night-ledger';
   let pendingEmoji = '';
+  // undefined = no change, a data-url string = new picture to upload, null = remove
+  let pendingAvatar;
+
+  function showAvatarRemove(on){ $('#avatar-remove-btn').style.display = on ? 'inline-flex' : 'none'; }
+  function setAvatarPreview(url){
+    const p = $('#avatar-preview');
+    if(url){
+      p.style.backgroundImage = `url("${url}")`;
+      p.classList.add('has-image');
+    } else {
+      p.style.backgroundImage = '';
+      p.classList.remove('has-image');
+      $('#avatar-preview-fallback').textContent = pendingEmoji || (state.displayName ? state.displayName[0].toUpperCase() : '?');
+    }
+  }
+  $('#avatar-preview').addEventListener('click', ()=> $('#avatar-file-input').click());
+  $('#avatar-upload-btn').addEventListener('click', ()=> $('#avatar-file-input').click());
+  $('#avatar-file-input').addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    try{
+      const dataUrl = await compressImage(file, 400, 0.82);  // small — it's just an avatar
+      pendingAvatar = dataUrl;
+      setAvatarPreview(dataUrl);
+      showAvatarRemove(true);
+    }catch(err){
+      console.error(err);
+      showToast('Could not read that image.', true);
+    }
+    e.target.value = '';
+  });
+  $('#avatar-remove-btn').addEventListener('click', ()=>{
+    pendingAvatar = null;
+    setAvatarPreview(null);
+    showAvatarRemove(false);
+  });
 
   function buildThemeGrid(){
     const grid = $('#theme-grid');
-    grid.innerHTML = Object.keys(THEMES).map(key=>{
+    const swatches = Object.keys(THEMES).map(key=>{
       const t = THEMES[key];
       return `<div class="theme-swatch" data-theme="${key}" style="background:linear-gradient(135deg, ${t.ink}, ${t.gold})">
         <span class="swatch-check">✓</span>${t.label}
       </div>`;
-    }).join('');
+    });
+    // 7th option: Auto — a light/dark diagonal split hints it follows the device.
+    // The centred dark scrim keeps the white label readable across both halves.
+    swatches.push(`<div class="theme-swatch" data-theme="auto" style="background:radial-gradient(ellipse 80% 64% at 50% 40%, rgba(0,0,0,0.5), transparent 72%), linear-gradient(135deg, ${AUTO_DARK.ink} 0 50%, ${AUTO_LIGHT.paper} 50% 100%)">
+      <span class="swatch-check">✓</span>Auto (match device)
+    </div>`);
+    grid.innerHTML = swatches.join('');
     $$('.theme-swatch', grid).forEach(sw=>{
       sw.addEventListener('click', ()=>{
         pendingTheme = sw.dataset.theme;
@@ -1595,14 +1998,24 @@
   buildThemeGrid();
   buildEmojiPresets();
 
-  $('#customize-btn').addEventListener('click', ()=>{
+  $('#customize-btn').addEventListener('click', async ()=>{
     pendingTheme = state.userSettings.theme;
     pendingEmoji = state.userSettings.emoji;
+    pendingAvatar = undefined;
     $('#settings-title-input').value = state.userSettings.title;
     $('#settings-emoji-input').value = state.userSettings.emoji;
     $('#settings-error').style.display = 'none';
     $$('.theme-swatch').forEach(s=> s.classList.toggle('selected', s.dataset.theme === pendingTheme));
     $$('.emoji-preset-btn').forEach(b=> b.classList.toggle('selected', b.dataset.emoji === pendingEmoji));
+    // seed the avatar preview from the current profile picture (if any)
+    if(state.userSettings.avatarPath){
+      if(!state.avatarUrl) state.avatarUrl = await Store.getAvatarUrl(state.userSettings.avatarPath);
+      setAvatarPreview(state.avatarUrl);
+      showAvatarRemove(!!state.avatarUrl);
+    } else {
+      setAvatarPreview(null);
+      showAvatarRemove(false);
+    }
     settingsOverlay.classList.add('active');
   });
 
@@ -1619,6 +2032,7 @@
 
   $('#settings-emoji-input').addEventListener('input', (e)=>{
     pendingEmoji = e.target.value.trim();
+    if(!$('#avatar-preview').classList.contains('has-image')) setAvatarPreview(null);
   });
 
   $('#settings-save-btn').addEventListener('click', async ()=>{
@@ -1627,15 +2041,28 @@
     errEl.style.display = 'none';
     setLoading(true, 'Saving your style…');
     try{
+      // Resolve the profile picture: upload a new one, remove it, or keep it.
+      let avatarPath = state.userSettings.avatarPath;
+      if(pendingAvatar === null){
+        setLoading(true, 'Removing your picture…');
+        await Store.removeAvatar(state.userId);
+        avatarPath = null;
+        state.avatarUrl = null;
+      } else if(typeof pendingAvatar === 'string'){
+        setLoading(true, 'Uploading your picture…');
+        avatarPath = await Store.uploadAvatar(state.userId, pendingAvatar);
+        state.avatarUrl = pendingAvatar; // show the local copy immediately
+      }
+      setLoading(true, 'Saving your style…');
       const { data: userData } = await sb.auth.getUser();
       const existingMeta = (userData && userData.user && userData.user.user_metadata) || {};
       const { error } = await sb.auth.updateUser({
-        data: { ...existingMeta, diary_title: title, diary_theme: pendingTheme, diary_emoji: pendingEmoji }
+        data: { ...existingMeta, diary_title: title, diary_theme: pendingTheme, diary_emoji: pendingEmoji, avatar_path: avatarPath }
       });
       if(error) throw error;
-      state.userSettings = { title, theme: pendingTheme, emoji: pendingEmoji };
+      state.userSettings = { title, theme: pendingTheme, emoji: pendingEmoji, avatarPath };
       applyTheme(pendingTheme);
-      $('#user-avatar').textContent = pendingEmoji || state.displayName[0].toUpperCase();
+      refreshHeaderAvatar();
       renderDiaryHeading();
       renderTimeline();
       if(state.view === 'map') renderMap();
@@ -1650,6 +2077,213 @@
       errEl.style.display = 'block';
     }
   });
+
+  // ================= BULK IMPORT WIZARD =================
+  // Backfill old photo memories: pick many images, then step through them one
+  // at a time. Reuses compressImage / Store.uploadMedia / Store.insertEntry and
+  // the same entry shape as the regular add-memory modal. Uses its own Leaflet
+  // picker instance so the regular location picker stays untouched.
+  const bulkOverlay = $('#bulk-modal-overlay');
+
+  function dmsToDecimal(dms, ref){
+    if(!dms || dms.length < 3) return null;
+    const dec = Number(dms[0]) + Number(dms[1])/60 + Number(dms[2])/3600;
+    if(isNaN(dec)) return null;
+    return (ref === 'S' || ref === 'W') ? -dec : dec;
+  }
+
+  // Read EXIF DateTimeOriginal + GPS from the ORIGINAL file (compression strips it).
+  function readExif(file){
+    return new Promise(resolve=>{
+      if(!window.EXIF){ resolve({date:null, gps:null}); return; }
+      try{
+        EXIF.getData(file, function(){
+          let date = null;
+          const dto = EXIF.getTag(this, 'DateTimeOriginal') || EXIF.getTag(this, 'DateTime');
+          if(dto && typeof dto === 'string'){
+            const m = dto.match(/^(\d{4}):(\d{2}):(\d{2})/);
+            if(m) date = `${m[1]}-${m[2]}-${m[3]}`;
+          }
+          const lat = dmsToDecimal(EXIF.getTag(this,'GPSLatitude'), EXIF.getTag(this,'GPSLatitudeRef'));
+          const lng = dmsToDecimal(EXIF.getTag(this,'GPSLongitude'), EXIF.getTag(this,'GPSLongitudeRef'));
+          const gps = (lat != null && lng != null) ? {lat, lng} : null;
+          resolve({date, gps});
+        });
+      }catch(e){ resolve({date:null, gps:null}); }
+    });
+  }
+
+  async function reverseGeocode(lat, lng){
+    try{
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+      const data = await res.json();
+      const a = data && data.address;
+      if(a){
+        const place = [a.city||a.town||a.village||a.hamlet||a.suburb||a.county, a.country].filter(Boolean).join(', ');
+        return place || data.display_name || '';
+      }
+      return (data && data.display_name) || '';
+    }catch(e){ return ''; }
+  }
+
+  // Wizard-scoped picker (mirrors initPickerMapIfNeeded / placePin).
+  function bulkEnsureMap(){
+    if(!state.bulkMap){
+      state.bulkMap = L.map('bulk-loc-picker', {zoomControl:true, attributionControl:false}).setView([20,0], 1.5);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {maxZoom:19}).addTo(state.bulkMap);
+      state.bulkMap.on('click', (e)=>{
+        bulkPlacePin(e.latlng.lat, e.latlng.lng, $('#bulk-place-input').value.trim(), false);
+      });
+    }
+    setTimeout(()=> state.bulkMap && state.bulkMap.invalidateSize(), 60);
+  }
+  function bulkPlacePin(lat, lng, name, recenter){
+    state.bulkPicked = {lat, lng, name};
+    if(state.bulkMarker) state.bulkMap.removeLayer(state.bulkMarker);
+    state.bulkMarker = L.marker([lat, lng]).addTo(state.bulkMap);
+    if(recenter) state.bulkMap.setView([lat, lng], 11);
+    $('#bulk-loc-status').textContent = `Pinned at ${lat.toFixed(3)}, ${lng.toFixed(3)}`;
+  }
+  function bulkClearPin(){
+    state.bulkPicked = null;
+    if(state.bulkMarker && state.bulkMap){ state.bulkMap.removeLayer(state.bulkMarker); state.bulkMarker = null; }
+    $('#bulk-loc-status').textContent = 'No location set';
+  }
+
+  async function showBulkPhoto(){
+    const items = state.bulkItems, i = state.bulkIndex;
+    if(i >= items.length){ finishBulk(); return; }
+    const item = items[i];
+    $('#bulk-progress').textContent = `Photo ${i+1} of ${items.length}`;
+    $('#bulk-title-input').value = '';
+    $('#bulk-place-input').value = '';
+    $('#bulk-error').style.display = 'none';
+    $('#bulk-loc-note').textContent = '';
+    $('#bulk-date-input').value = new Date().toISOString().slice(0,10);
+    $('#bulk-preview').removeAttribute('src');
+    bulkClearPin();
+
+    setLoading(true, 'Preparing photo…');
+    try{
+      if(!item.dataUrl){
+        item.dataUrl = await compressImage(item.file, 1280, 0.72); // same as single-photo uploads
+        item.mimeType = 'image/jpeg';
+      }
+      $('#bulk-preview').src = item.dataUrl;
+      const exif = await readExif(item.file);
+      if(exif.date) $('#bulk-date-input').value = exif.date;
+      setLoading(false);
+      bulkEnsureMap();
+      if(exif.gps){
+        $('#bulk-loc-note').textContent = '📍 Location found in this photo — adjust the pin if it looks off.';
+        bulkPlacePin(exif.gps.lat, exif.gps.lng, '', true);
+        const name = await reverseGeocode(exif.gps.lat, exif.gps.lng);
+        if(name){ $('#bulk-place-input').value = name; if(state.bulkPicked) state.bulkPicked.name = name; }
+      } else {
+        $('#bulk-loc-note').textContent = 'No location found in this photo. Add one below if you like, or leave it blank.';
+      }
+    }catch(err){
+      console.error(err);
+      setLoading(false);
+      item.failed = true;
+      $('#bulk-loc-note').textContent = 'Could not read this image — use “Skip this one”.';
+    }
+  }
+
+  function finishBulk(){
+    bulkOverlay.classList.remove('active');
+    showToast(`Imported ${state.bulkImported} of ${state.bulkTotal} memories.`);
+    renderTimeline();
+    if(state.view === 'map') renderMap();
+    if(state.view === 'corner') renderMemoryCorner();
+    state.bulkItems = [];
+    state.bulkIndex = 0;
+  }
+
+  // Launched from the add-memory modal when several photos are chosen at once:
+  // replace that modal with the step-through review wizard.
+  function startBulkImport(files){
+    entryOverlay.classList.remove('active');
+    state.bulkItems = files.map(f=>({file:f, dataUrl:null, mimeType:null}));
+    state.bulkIndex = 0;
+    state.bulkImported = 0;
+    state.bulkTotal = files.length;
+    bulkOverlay.classList.add('active');
+    showBulkPhoto();
+  }
+
+  $('#bulk-locate-btn').addEventListener('click', async ()=>{
+    const q = $('#bulk-place-input').value.trim();
+    if(!q){ showToast('Type a place name first, then hit Find.', true); return; }
+    const btn = $('#bulk-locate-btn'); const original = btn.textContent;
+    btn.textContent = 'Searching…';
+    try{
+      const res = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q));
+      const results = await res.json();
+      if(!results.length){ showToast('Could not find that place — try being more specific, or click the map.', true); return; }
+      bulkEnsureMap();
+      bulkPlacePin(parseFloat(results[0].lat), parseFloat(results[0].lon), q, true);
+    }catch(err){
+      console.error(err);
+      showToast('Location search failed — you can still click the map directly.', true);
+    }finally{
+      btn.textContent = original;
+    }
+  });
+  $('#bulk-clear-pin').addEventListener('click', bulkClearPin);
+
+  $('#bulk-skip-btn').addEventListener('click', ()=>{
+    state.bulkIndex++;
+    showBulkPhoto();
+  });
+
+  $('#bulk-save-btn').addEventListener('click', async ()=>{
+    const items = state.bulkItems, i = state.bulkIndex, item = items[i];
+    if(!item) return;
+    const date = $('#bulk-date-input').value;
+    const placeName = $('#bulk-place-input').value.trim();
+    const errEl = $('#bulk-error');
+    errEl.style.display = 'none';
+    if(!date){ errEl.textContent = 'Please set a date for this photo.'; errEl.style.display = 'block'; return; }
+    if(!item.dataUrl){ errEl.textContent = 'This image could not be read — use “Skip this one”.'; errEl.style.display = 'block'; return; }
+    const title = $('#bulk-title-input').value.trim() || fmtDate(date); // fall back to the date as a title
+
+    // same location resolution as the regular add-memory save
+    let location;
+    if(state.bulkPicked && state.bulkPicked.lat != null){
+      location = {...state.bulkPicked, name: placeName || state.bulkPicked.name || ''};
+    } else if(placeName){
+      location = {lat:null, lng:null, name: placeName};
+    } else {
+      location = null;
+    }
+
+    setLoading(true, `Importing photo ${i+1}…`);
+    try{
+      const id = crypto.randomUUID();
+      const mediaKey = await Store.uploadMedia(state.userId, id, item.dataUrl, item.mimeType);
+      const entryObj = {
+        id, type: 'photo', title, text: '', date,
+        location, mediaKey, mediaType: item.mimeType, isMemory: false, mood: null,
+        createdAt: null
+      };
+      entryObj.createdAt = await Store.insertEntry(entryObj, state.userId);
+      state.entries.push(entryObj);
+      state.mediaCache[id] = item.dataUrl;
+      state.bulkImported++;
+      setLoading(false);
+      state.bulkIndex++;
+      showBulkPhoto();
+    }catch(err){
+      console.error(err);
+      setLoading(false);
+      errEl.textContent = 'Could not import this one: ' + (err.message || 'please try again.');
+      errEl.style.display = 'block';
+    }
+  });
+
+  $('#bulk-modal-close').addEventListener('click', finishBulk);
+  bulkOverlay.addEventListener('click', (e)=>{ if(e.target === bulkOverlay) finishBulk(); });
 
   // ---------------- init ----------------
   setAuthMode('login');

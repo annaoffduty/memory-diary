@@ -1,6 +1,6 @@
 // Minimal service worker so the app is installable and works offline
 // once the shell has been visited at least once.
-const CACHE_NAME = 'thread-diary-v1';
+const CACHE_NAME = 'thread-diary-v2';
 const APP_SHELL = [
   './index.html',
   './manifest.json'
@@ -23,7 +23,18 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // Network-first so the app shell stays fresh (cache-first was serving a
+  // stale index.html, hiding new code). Falls back to cache when offline.
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    fetch(event.request)
+      .then((resp) => {
+        if (event.request.method === 'GET' && resp && resp.ok &&
+            new URL(event.request.url).origin === self.location.origin) {
+          const copy = resp.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        }
+        return resp;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
