@@ -374,6 +374,8 @@
   @media (hover:hover){ .corner-tile:hover{transform:translateY(-3px);box-shadow:0 16px 34px rgba(0,0,0,0.32);} }
   .corner-tile:active{transform:scale(0.985);}
   .corner-tile img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.9;}
+  /* gallery corner previews show the whole first photo (contained), not cropped */
+  .corner-tile img[data-lazy-path]{object-fit:contain;opacity:1;background:var(--ink);}
   .corner-tile:has(img)::after{content:"";position:absolute;inset:0;background:linear-gradient(to top, rgba(0,0,0,0.66), rgba(0,0,0,0.05) 64%);}
   .corner-text{position:relative;z-index:1;display:flex;flex-direction:column;gap:5px;max-width:100%;}
   .corner-tile .corner-label{padding-right:20px;font-family:'Newsreader',serif;font-weight:500;font-size:17px;
@@ -409,11 +411,36 @@
   }
   @media (hover:hover){ .fab:hover{transform:scale(1.06) rotate(90deg);box-shadow:0 14px 32px rgba(217,164,65,0.55);} }
   .fab:active{transform:scale(0.92);}
-  /* bulk import wizard */
-  .bulk-progress{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-ink);margin-bottom:14px;font-weight:600;}
-  .bulk-preview{width:100%;max-height:280px;object-fit:cover;border-radius:12px;margin-bottom:16px;background:var(--surface);display:block;border:1px solid var(--line);}
-  .bulk-preview:not([src]){min-height:120px;}
-  .bulk-loc-note{font-size:12.5px;color:var(--muted-ink);margin:-2px 0 12px;line-height:1.45;}
+  /* multi-photo gallery form */
+  .gallery-loc-note{font-size:12.5px;color:var(--muted-ink);margin:-2px 0 12px;line-height:1.45;}
+  .gallery-thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;}
+  .gallery-thumb{position:relative;aspect-ratio:1/1;border-radius:10px;overflow:hidden;background:var(--surface);border:1px solid var(--line);}
+  .gallery-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .gallery-thumb-x{
+    position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;border:none;
+    background:rgba(10,14,20,0.72);color:#fff;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;
+    transition:transform .12s var(--ease-out), background .15s ease;
+  }
+  .gallery-thumb-x:active{transform:scale(0.88);}
+  @media (hover:hover){ .gallery-thumb-x:hover{background:var(--danger);} }
+  /* timeline / corner collage previews */
+  .entry-gallery{margin-top:12px;display:grid;gap:4px;border-radius:11px;overflow:hidden;max-height:260px;border:1px solid rgba(255,255,255,0.08);}
+  .entry-gallery.g-1{grid-template-columns:1fr;}
+  .entry-gallery.g-2{grid-template-columns:1fr 1fr;}
+  .entry-gallery.g-3{grid-template-columns:2fr 1fr;grid-auto-rows:1fr;}
+  .entry-gallery.g-3 .gallery-cell:first-child{grid-row:span 2;}
+  .entry-gallery.g-4{grid-template-columns:1fr 1fr;}
+  .gallery-cell{position:relative;overflow:hidden;aspect-ratio:1/1;background:rgba(0,0,0,0.24);}
+  .entry-gallery.g-1 .gallery-cell{aspect-ratio:16/10;}
+  .gallery-cell img{width:100%;height:100%;object-fit:contain;display:block;}
+  .gallery-more{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(10,14,20,0.55);color:#fff;font-family:'Newsreader',serif;font-size:24px;font-weight:500;}
+  .corner-count{position:absolute;top:12px;left:13px;z-index:2;background:rgba(10,14,20,0.6);color:#fff;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;letter-spacing:.02em;}
+  /* detail view gallery (main image + clickable thumbnail strip) */
+  .detail-gallery-main{width:100%;max-height:360px;object-fit:contain;border-radius:11px;display:block;margin-bottom:8px;background:var(--surface);}
+  .detail-gallery-strip{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;}
+  .detail-gallery-thumb{width:60px;height:60px;flex:none;object-fit:cover;border-radius:8px;cursor:pointer;opacity:.55;border:2px solid transparent;transition:opacity .15s ease, border-color .15s ease;}
+  .detail-gallery-thumb.active{opacity:1;border-color:var(--gold);}
+  @media (hover:hover){ .detail-gallery-thumb:hover{opacity:1;} }
 
   /* ---------- Modal ---------- */
   .modal-overlay{
@@ -804,43 +831,48 @@
   </div>
 </div>
 
-<!-- ============ BULK IMPORT WIZARD MODAL ============ -->
-<div class="modal-overlay" id="bulk-modal-overlay">
+<!-- ============ MULTI-PHOTO GALLERY MODAL ============ -->
+<div class="modal-overlay" id="gallery-modal-overlay">
   <div class="modal">
-    <button class="modal-close" id="bulk-modal-close">✕</button>
-    <h2>Bulk import</h2>
-    <div class="bulk-progress" id="bulk-progress">Photo 1 of 1</div>
-    <img class="bulk-preview" id="bulk-preview" alt="">
+    <button class="modal-close" id="gallery-modal-close">✕</button>
+    <h2 id="gallery-modal-title">New photo gallery</h2>
 
     <div class="field">
       <label>Title</label>
-      <input type="text" id="bulk-title-input" placeholder="A name for this memory (optional)">
+      <input type="text" id="gallery-title-input" placeholder="A name for this set of photos">
     </div>
     <div class="row-2">
       <div class="field">
         <label>Date</label>
-        <input type="date" id="bulk-date-input">
+        <input type="date" id="gallery-date-input">
       </div>
       <div class="field">
         <label>Place name (optional)</label>
-        <input type="text" id="bulk-place-input" placeholder="e.g. Queenstown, NZ">
-        <button type="button" class="btn-secondary" id="bulk-locate-btn" style="margin-top:6px;padding:6px;font-size:12px;">🔍 Find on map</button>
+        <input type="text" id="gallery-place-input" placeholder="e.g. Queenstown, NZ">
+        <button type="button" class="btn-secondary" id="gallery-locate-btn" style="margin-top:6px;padding:6px;font-size:12px;">🔍 Find on map</button>
       </div>
     </div>
-    <div class="bulk-loc-note" id="bulk-loc-note"></div>
+    <div class="gallery-loc-note" id="gallery-loc-note"></div>
 
     <div class="field">
-      <label>Pin it on the map — from the photo's GPS if available, or set your own</label>
-      <div class="loc-picker" id="bulk-loc-picker"></div>
-      <div class="loc-status" id="bulk-loc-status">No location set</div>
-      <button type="button" class="btn-secondary" id="bulk-clear-pin" style="margin-top:6px;padding:7px 12px;font-size:12.5px;">✕ Clear pin</button>
+      <label>Pin it on the map — from the first photo's GPS if available, or set your own</label>
+      <div class="loc-picker" id="gallery-loc-picker"></div>
+      <div class="loc-status" id="gallery-loc-status">No location set</div>
+      <button type="button" class="btn-secondary" id="gallery-clear-pin" style="margin-top:6px;padding:7px 12px;font-size:12.5px;">✕ Clear pin</button>
     </div>
 
-    <div class="field-error" id="bulk-error"></div>
+    <div class="field">
+      <label id="gallery-photos-label">Photos in this gallery</label>
+      <div class="gallery-thumbs" id="gallery-thumbs"></div>
+      <button type="button" class="btn-secondary" id="gallery-add-btn" style="margin-top:8px;padding:7px 12px;font-size:12.5px;">＋ Add more photos</button>
+      <input type="file" id="gallery-add-input" accept="image/*" multiple style="display:none;">
+    </div>
+
+    <div class="field-error" id="gallery-error"></div>
 
     <div class="modal-actions">
-      <button class="btn-secondary" id="bulk-skip-btn">Skip this one</button>
-      <button class="btn-primary" id="bulk-save-btn" style="flex:2;">Save &amp; Next</button>
+      <button class="btn-secondary" id="gallery-delete-btn" style="display:none;">Delete</button>
+      <button class="btn-primary" id="gallery-save-btn" style="flex:2;">Save</button>
     </div>
   </div>
 </div>
@@ -938,14 +970,14 @@
       return (data||[]).map(row=>({
         id: row.id, type: row.type, title: row.title, text: row.text,
         date: row.date, location: row.location, mediaKey: row.media_path,
-        mediaType: row.media_type, isMemory: row.is_memory, mood: row.mood, createdAt: row.created_at
+        mediaType: row.media_type, mediaPaths: row.media_paths, isMemory: row.is_memory, mood: row.mood, createdAt: row.created_at
       }));
     },
     async insertEntry(entry, userId){
       const { data, error } = await sb.from('entries').insert({
         id: entry.id, user_id: userId, type: entry.type, title: entry.title, text: entry.text,
         date: entry.date, location: entry.location, media_path: entry.mediaKey,
-        media_type: entry.mediaType, is_memory: entry.isMemory, mood: entry.mood
+        media_type: entry.mediaType, media_paths: entry.mediaPaths || null, is_memory: entry.isMemory, mood: entry.mood
       }).select().single();
       if(error) throw error;
       return data.created_at;
@@ -954,7 +986,7 @@
       const { error } = await sb.from('entries').update({
         type: entry.type, title: entry.title, text: entry.text,
         date: entry.date, location: entry.location, media_path: entry.mediaKey,
-        media_type: entry.mediaType, is_memory: entry.isMemory, mood: entry.mood
+        media_type: entry.mediaType, media_paths: entry.mediaPaths || null, is_memory: entry.isMemory, mood: entry.mood
       }).eq('id', id);
       if(error) throw error;
     },
@@ -1029,9 +1061,11 @@
     mediaRecorder: null,
     recordedChunks: [],
     recTimer: null,
-    // bulk import wizard
-    bulkItems: [], bulkIndex: 0, bulkImported: 0, bulkTotal: 0,
-    bulkPicked: null, bulkMap: null, bulkMarker: null,
+    pathCache: {},     // storage path -> signed url (for gallery photos)
+    // multi-photo gallery form (bulk import + editing a gallery entry)
+    galleryEditingId: null,       // null = new import, else the entry being edited
+    galleryPhotos: [],            // {kind:'new',file,dataUrl,mimeType} | {kind:'existing',path,url}
+    galleryPicked: null, galleryMap: null, galleryMarker: null,
     avatarUrl: null,   // signed url (or staged data url) for the profile picture
     userSettings: { title: '', theme: 'night-ledger', emoji: '', avatarPath: null }
   };
@@ -1348,7 +1382,7 @@
               ${entry.isMemory ? '<div class="entry-star">⭐</div>' : ''}
             </div>
             ${entry.text ? `<div class="entry-snippet">${escapeHtml(truncate(entry.text, 140))}</div>` : ''}
-            ${entry.mediaKey && entry.type === 'photo' ? `<img class="entry-thumb" data-lazy-media="${entry.id}" alt="">` : ''}
+            ${entryMediaPreview(entry)}
           </div>
         </div>`;
     });
@@ -1364,6 +1398,7 @@
       const url = await getMediaCached(id);
       if(url) img.src = url;
     });
+    lazyLoadPaths(container);
   }
 
   function escapeHtml(s){
@@ -1380,6 +1415,50 @@
     const url = await Store.getMediaUrl(entry.mediaKey);
     if(url) state.mediaCache[id] = url;
     return url;
+  }
+  // signed URL for a storage path (gallery photos), cached by path
+  async function pathUrl(path){
+    if(!path) return null;
+    if(state.pathCache[path]) return state.pathCache[path];
+    const url = await Store.getMediaUrl(path);
+    if(url) state.pathCache[path] = url;
+    return url;
+  }
+  function isGallery(entry){ return Array.isArray(entry.mediaPaths) && entry.mediaPaths.length > 0; }
+
+  // Media thumbnail block for a timeline card: a collage for gallery entries,
+  // the single lazy thumb for a normal photo entry, else nothing.
+  function entryMediaPreview(entry){
+    if(isGallery(entry)){
+      const paths = entry.mediaPaths;
+      const show = paths.slice(0, 4);
+      const extra = paths.length - show.length;
+      const cells = show.map((p, idx)=>{
+        const more = (idx === show.length - 1 && extra > 0) ? `<span class="gallery-more">+${extra}</span>` : '';
+        return `<div class="gallery-cell"><img data-lazy-path="${p}" alt="">${more}</div>`;
+      }).join('');
+      return `<div class="entry-gallery g-${Math.min(show.length, 4)}">${cells}</div>`;
+    }
+    if(entry.mediaKey && entry.type === 'photo'){
+      return `<img class="entry-thumb" data-lazy-media="${entry.id}" alt="">`;
+    }
+    return '';
+  }
+  // First-photo + count for a Memory Corner tile.
+  function cornerMediaPreview(e){
+    if(isGallery(e)){
+      const badge = e.mediaPaths.length > 1 ? `<span class="corner-count">▦ ${e.mediaPaths.length}</span>` : '';
+      return `<img data-lazy-path="${e.mediaPaths[0]}" alt="">${badge}`;
+    }
+    if(e.mediaKey && e.type === 'photo') return `<img data-lazy-media="${e.id}" alt="">`;
+    return '';
+  }
+  // lazy-load every [data-lazy-path] image inside a container
+  function lazyLoadPaths(container){
+    $$('[data-lazy-path]', container).forEach(async img=>{
+      const url = await pathUrl(img.dataset.lazyPath);
+      if(url) img.src = url;
+    });
   }
 
   // ================= MAP VIEW =================
@@ -1450,7 +1529,7 @@
     }
     container.innerHTML = `<div class="corner-grid">${memories.map(e=>`
       <div class="corner-tile" data-id="${e.id}">
-        ${e.mediaKey && e.type==='photo' ? `<img data-lazy-media="${e.id}" alt="">` : ''}
+        ${cornerMediaPreview(e)}
         <span class="corner-star">⭐</span>
         <div class="corner-text">
           <span class="corner-label">${escapeHtml(truncate(e.title,40))}</span>
@@ -1465,6 +1544,7 @@
       const url = await getMediaCached(id);
       if(url) img.src = url;
     });
+    lazyLoadPaths(container);
   }
 
   // ================= ADD / EDIT ENTRY MODAL =================
@@ -1600,11 +1680,11 @@
   // --- photo/video file handling ---
   $('#media-drop').addEventListener('click', ()=> $('#media-file-input').click());
   $('#media-file-input').addEventListener('change', async (e)=>{
-    // More than one photo selected -> hand off to the step-through bulk wizard.
+    // More than one photo selected -> hand off to the multi-photo gallery form.
     // Exactly one photo (or any video) keeps the existing single-entry path.
     if(state.selectedType === 'photo'){
       const imgs = Array.from(e.target.files || []).filter(f=> f.type.startsWith('image/'));
-      if(imgs.length > 1){ e.target.value = ''; startBulkImport(imgs); return; }
+      if(imgs.length > 1){ e.target.value = ''; openGalleryForNew(imgs); return; }
     }
     const file = e.target.files[0];
     if(!file) return;
@@ -1828,6 +1908,9 @@
       state.entries = state.entries.filter(e=>e.id !== id);
       await Store.deleteEntry(id);
       if(existing && existing.mediaKey) await Store.deleteMedia(existing.mediaKey);
+      if(existing && Array.isArray(existing.mediaPaths)){
+        for(const p of existing.mediaPaths){ await Store.deleteMedia(p); }
+      }
       delete state.mediaCache[id];
       setLoading(false);
       showToast('Memory deleted.');
@@ -1847,7 +1930,17 @@
     if(!entry) return;
     const content = $('#detail-content');
     let mediaHtml = '';
-    if(entry.mediaKey){
+    if(isGallery(entry)){
+      setLoading(true, 'Loading photos…');
+      const urls = (await Promise.all(entry.mediaPaths.map(p=> pathUrl(p)))).filter(Boolean);
+      setLoading(false);
+      if(urls.length){
+        mediaHtml = `<div class="detail-gallery">
+          <img class="detail-gallery-main" id="detail-gallery-main" src="${urls[0]}">
+          ${urls.length > 1 ? `<div class="detail-gallery-strip">${urls.map((u,i)=>`<img class="detail-gallery-thumb${i===0?' active':''}" data-full="${u}" src="${u}">`).join('')}</div>` : ''}
+        </div>`;
+      }
+    } else if(entry.mediaKey){
       setLoading(true, 'Loading memory…');
       const url = await getMediaCached(id);
       setLoading(false);
@@ -1868,6 +1961,14 @@
       ${mediaHtml}
       <div class="detail-text">${escapeHtml(entry.text || 'No notes written.')}</div>
     `;
+    // clicking a thumbnail swaps the main gallery image
+    $$('.detail-gallery-thumb', content).forEach(t=>{
+      t.addEventListener('click', ()=>{
+        const main = $('#detail-gallery-main'); if(main) main.src = t.dataset.full;
+        $$('.detail-gallery-thumb', content).forEach(x=> x.classList.remove('active'));
+        t.classList.add('active');
+      });
+    });
     detailOverlay.dataset.id = id;
     detailOverlay.classList.add('active');
   }
@@ -1887,6 +1988,8 @@
     const entry = state.entries.find(e=>e.id === id);
     if(!entry) return;
     detailOverlay.classList.remove('active');
+    // gallery entries edit in the multi-photo form, not the single-entry modal
+    if(isGallery(entry)){ openGalleryForEdit(entry); return; }
     resetEntryForm();
     state.editingId = id;
     $('#entry-modal-title').textContent = 'Edit memory';
@@ -2078,12 +2181,12 @@
     }
   });
 
-  // ================= BULK IMPORT WIZARD =================
-  // Backfill old photo memories: pick many images, then step through them one
-  // at a time. Reuses compressImage / Store.uploadMedia / Store.insertEntry and
-  // the same entry shape as the regular add-memory modal. Uses its own Leaflet
-  // picker instance so the regular location picker stays untouched.
-  const bulkOverlay = $('#bulk-modal-overlay');
+  // ================= MULTI-PHOTO GALLERY FORM =================
+  // Selecting several photos at once creates ONE "gallery" entry (type photo,
+  // media_paths = array of storage paths). Also used to edit an existing
+  // gallery entry. Reuses compressImage / Store.uploadMedia / Store.insertEntry;
+  // its own Leaflet picker keeps the regular location picker untouched.
+  const galleryOverlay = $('#gallery-modal-overlay');
 
   function dmsToDecimal(dms, ref){
     if(!dms || dms.length < 3) return null;
@@ -2126,103 +2229,151 @@
     }catch(e){ return ''; }
   }
 
-  // Wizard-scoped picker (mirrors initPickerMapIfNeeded / placePin).
-  function bulkEnsureMap(){
-    if(!state.bulkMap){
-      state.bulkMap = L.map('bulk-loc-picker', {zoomControl:true, attributionControl:false}).setView([20,0], 1.5);
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {maxZoom:19}).addTo(state.bulkMap);
-      state.bulkMap.on('click', (e)=>{
-        bulkPlacePin(e.latlng.lat, e.latlng.lng, $('#bulk-place-input').value.trim(), false);
+  // Gallery-scoped picker (mirrors initPickerMapIfNeeded / placePin).
+  function galleryEnsureMap(){
+    if(!state.galleryMap){
+      state.galleryMap = L.map('gallery-loc-picker', {zoomControl:true, attributionControl:false}).setView([20,0], 1.5);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {maxZoom:19}).addTo(state.galleryMap);
+      state.galleryMap.on('click', (e)=>{
+        galleryPlacePin(e.latlng.lat, e.latlng.lng, $('#gallery-place-input').value.trim(), false);
       });
     }
-    setTimeout(()=> state.bulkMap && state.bulkMap.invalidateSize(), 60);
+    setTimeout(()=> state.galleryMap && state.galleryMap.invalidateSize(), 60);
   }
-  function bulkPlacePin(lat, lng, name, recenter){
-    state.bulkPicked = {lat, lng, name};
-    if(state.bulkMarker) state.bulkMap.removeLayer(state.bulkMarker);
-    state.bulkMarker = L.marker([lat, lng]).addTo(state.bulkMap);
-    if(recenter) state.bulkMap.setView([lat, lng], 11);
-    $('#bulk-loc-status').textContent = `Pinned at ${lat.toFixed(3)}, ${lng.toFixed(3)}`;
+  function galleryPlacePin(lat, lng, name, recenter){
+    state.galleryPicked = {lat, lng, name};
+    if(state.galleryMarker) state.galleryMap.removeLayer(state.galleryMarker);
+    state.galleryMarker = L.marker([lat, lng]).addTo(state.galleryMap);
+    if(recenter) state.galleryMap.setView([lat, lng], 11);
+    $('#gallery-loc-status').textContent = `Pinned at ${lat.toFixed(3)}, ${lng.toFixed(3)}`;
   }
-  function bulkClearPin(){
-    state.bulkPicked = null;
-    if(state.bulkMarker && state.bulkMap){ state.bulkMap.removeLayer(state.bulkMarker); state.bulkMarker = null; }
-    $('#bulk-loc-status').textContent = 'No location set';
+  function galleryClearPin(){
+    state.galleryPicked = null;
+    if(state.galleryMarker && state.galleryMap){ state.galleryMap.removeLayer(state.galleryMarker); state.galleryMarker = null; }
+    $('#gallery-loc-status').textContent = 'No location set';
   }
 
-  async function showBulkPhoto(){
-    const items = state.bulkItems, i = state.bulkIndex;
-    if(i >= items.length){ finishBulk(); return; }
-    const item = items[i];
-    $('#bulk-progress').textContent = `Photo ${i+1} of ${items.length}`;
-    $('#bulk-title-input').value = '';
-    $('#bulk-place-input').value = '';
-    $('#bulk-error').style.display = 'none';
-    $('#bulk-loc-note').textContent = '';
-    $('#bulk-date-input').value = new Date().toISOString().slice(0,10);
-    $('#bulk-preview').removeAttribute('src');
-    bulkClearPin();
+  function renderGalleryThumbs(){
+    const wrap = $('#gallery-thumbs');
+    if(!state.galleryPhotos.length){
+      wrap.innerHTML = '<div style="font-size:12.5px;color:var(--muted-ink);">No photos yet — add some below.</div>';
+    } else {
+      wrap.innerHTML = state.galleryPhotos.map((ph, i)=>{
+        const src = ph.dataUrl || ph.url || '';
+        return `<div class="gallery-thumb"><img src="${src}" alt=""><button type="button" class="gallery-thumb-x" data-idx="${i}" title="Remove">✕</button></div>`;
+      }).join('');
+      $$('.gallery-thumb-x', wrap).forEach(btn=>{
+        btn.addEventListener('click', (ev)=>{
+          ev.stopPropagation();
+          state.galleryPhotos.splice(parseInt(btn.dataset.idx, 10), 1);
+          renderGalleryThumbs();
+        });
+      });
+    }
+    $('#gallery-photos-label').textContent = `Photos in this gallery (${state.galleryPhotos.length})`;
+  }
 
-    setLoading(true, 'Preparing photo…');
-    try{
-      if(!item.dataUrl){
-        item.dataUrl = await compressImage(item.file, 1280, 0.72); // same as single-photo uploads
-        item.mimeType = 'image/jpeg';
-      }
-      $('#bulk-preview').src = item.dataUrl;
-      const exif = await readExif(item.file);
-      if(exif.date) $('#bulk-date-input').value = exif.date;
-      setLoading(false);
-      bulkEnsureMap();
+  // compress + append newly picked files (same compression as single uploads)
+  async function addGalleryFiles(files){
+    setLoading(true, 'Preparing photos…');
+    for(const f of files){
+      try{
+        const dataUrl = await compressImage(f, 1280, 0.72);
+        state.galleryPhotos.push({kind:'new', file:f, dataUrl, mimeType:'image/jpeg'});
+      }catch(e){ console.error('Skipping unreadable image', e); }
+    }
+    setLoading(false);
+    renderGalleryThumbs();
+  }
+
+  async function openGalleryForNew(files){
+    entryOverlay.classList.remove('active');   // replace the add-memory modal
+    state.galleryEditingId = null;
+    state.galleryPhotos = [];
+    state.galleryPicked = null;
+    $('#gallery-modal-title').textContent = 'New photo gallery';
+    $('#gallery-delete-btn').style.display = 'none';
+    $('#gallery-title-input').value = '';
+    $('#gallery-place-input').value = '';
+    $('#gallery-date-input').value = new Date().toISOString().slice(0,10);
+    $('#gallery-error').style.display = 'none';
+    $('#gallery-loc-note').textContent = '';
+    galleryOverlay.classList.add('active');
+    galleryEnsureMap();
+    galleryClearPin();
+    renderGalleryThumbs();
+    await addGalleryFiles(files);
+    // prefill shared date + location from the FIRST photo's EXIF
+    if(files[0]){
+      const exif = await readExif(files[0]);
+      if(exif.date) $('#gallery-date-input').value = exif.date;
       if(exif.gps){
-        $('#bulk-loc-note').textContent = '📍 Location found in this photo — adjust the pin if it looks off.';
-        bulkPlacePin(exif.gps.lat, exif.gps.lng, '', true);
+        $('#gallery-loc-note').textContent = '📍 Location taken from the first photo — adjust the pin if it looks off.';
+        galleryPlacePin(exif.gps.lat, exif.gps.lng, '', true);
         const name = await reverseGeocode(exif.gps.lat, exif.gps.lng);
-        if(name){ $('#bulk-place-input').value = name; if(state.bulkPicked) state.bulkPicked.name = name; }
+        if(name){ $('#gallery-place-input').value = name; if(state.galleryPicked) state.galleryPicked.name = name; }
       } else {
-        $('#bulk-loc-note').textContent = 'No location found in this photo. Add one below if you like, or leave it blank.';
+        $('#gallery-loc-note').textContent = 'No location found in the first photo. Add one if you like, or leave it blank.';
       }
-    }catch(err){
-      console.error(err);
-      setLoading(false);
-      item.failed = true;
-      $('#bulk-loc-note').textContent = 'Could not read this image — use “Skip this one”.';
     }
   }
 
-  function finishBulk(){
-    bulkOverlay.classList.remove('active');
-    showToast(`Imported ${state.bulkImported} of ${state.bulkTotal} memories.`);
-    renderTimeline();
-    if(state.view === 'map') renderMap();
-    if(state.view === 'corner') renderMemoryCorner();
-    state.bulkItems = [];
-    state.bulkIndex = 0;
+  async function openGalleryForEdit(entry){
+    state.galleryEditingId = entry.id;
+    state.galleryPicked = null;
+    state.galleryPhotos = entry.mediaPaths.map(p=>({kind:'existing', path:p, url:null}));
+    $('#gallery-modal-title').textContent = 'Edit photo gallery';
+    $('#gallery-delete-btn').style.display = 'block';
+    $('#gallery-title-input').value = entry.title || '';
+    $('#gallery-place-input').value = entry.location ? (entry.location.name||'') : '';
+    $('#gallery-date-input').value = entry.date;
+    $('#gallery-error').style.display = 'none';
+    $('#gallery-loc-note').textContent = 'Remove any photo that belongs elsewhere, or add more.';
+    galleryOverlay.classList.add('active');
+    galleryEnsureMap();
+    galleryClearPin();
+    setLoading(true, 'Loading photos…');
+    await Promise.all(state.galleryPhotos.map(async ph=>{ ph.url = await pathUrl(ph.path); }));
+    setLoading(false);
+    renderGalleryThumbs();
+    if(entry.location && entry.location.lat != null){
+      galleryPlacePin(entry.location.lat, entry.location.lng, entry.location.name, true);
+    }
   }
 
-  // Launched from the add-memory modal when several photos are chosen at once:
-  // replace that modal with the step-through review wizard.
-  function startBulkImport(files){
-    entryOverlay.classList.remove('active');
-    state.bulkItems = files.map(f=>({file:f, dataUrl:null, mimeType:null}));
-    state.bulkIndex = 0;
-    state.bulkImported = 0;
-    state.bulkTotal = files.length;
-    bulkOverlay.classList.add('active');
-    showBulkPhoto();
+  // upload any new photos, returning all paths in display order
+  async function galleryUploadAndCollect(){
+    const paths = [];
+    for(const ph of state.galleryPhotos){
+      if(ph.kind === 'existing'){ paths.push(ph.path); }
+      else {
+        const pid = crypto.randomUUID();
+        const path = await Store.uploadMedia(state.userId, pid, ph.dataUrl, ph.mimeType || 'image/jpeg');
+        state.pathCache[path] = ph.dataUrl; // show the local copy immediately
+        paths.push(path);
+      }
+    }
+    return paths;
   }
 
-  $('#bulk-locate-btn').addEventListener('click', async ()=>{
-    const q = $('#bulk-place-input').value.trim();
+  $('#gallery-add-btn').addEventListener('click', ()=> $('#gallery-add-input').click());
+  $('#gallery-add-input').addEventListener('change', async (e)=>{
+    const files = Array.from(e.target.files || []).filter(f=> f.type.startsWith('image/'));
+    e.target.value = '';
+    if(files.length) await addGalleryFiles(files);
+  });
+
+  $('#gallery-locate-btn').addEventListener('click', async ()=>{
+    const q = $('#gallery-place-input').value.trim();
     if(!q){ showToast('Type a place name first, then hit Find.', true); return; }
-    const btn = $('#bulk-locate-btn'); const original = btn.textContent;
+    const btn = $('#gallery-locate-btn'); const original = btn.textContent;
     btn.textContent = 'Searching…';
     try{
       const res = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q));
       const results = await res.json();
       if(!results.length){ showToast('Could not find that place — try being more specific, or click the map.', true); return; }
-      bulkEnsureMap();
-      bulkPlacePin(parseFloat(results[0].lat), parseFloat(results[0].lon), q, true);
+      galleryEnsureMap();
+      galleryPlacePin(parseFloat(results[0].lat), parseFloat(results[0].lon), q, true);
     }catch(err){
       console.error(err);
       showToast('Location search failed — you can still click the map directly.', true);
@@ -2230,60 +2381,73 @@
       btn.textContent = original;
     }
   });
-  $('#bulk-clear-pin').addEventListener('click', bulkClearPin);
+  $('#gallery-clear-pin').addEventListener('click', galleryClearPin);
 
-  $('#bulk-skip-btn').addEventListener('click', ()=>{
-    state.bulkIndex++;
-    showBulkPhoto();
-  });
-
-  $('#bulk-save-btn').addEventListener('click', async ()=>{
-    const items = state.bulkItems, i = state.bulkIndex, item = items[i];
-    if(!item) return;
-    const date = $('#bulk-date-input').value;
-    const placeName = $('#bulk-place-input').value.trim();
-    const errEl = $('#bulk-error');
+  $('#gallery-save-btn').addEventListener('click', async ()=>{
+    const errEl = $('#gallery-error');
     errEl.style.display = 'none';
-    if(!date){ errEl.textContent = 'Please set a date for this photo.'; errEl.style.display = 'block'; return; }
-    if(!item.dataUrl){ errEl.textContent = 'This image could not be read — use “Skip this one”.'; errEl.style.display = 'block'; return; }
-    const title = $('#bulk-title-input').value.trim() || fmtDate(date); // fall back to the date as a title
+    const date = $('#gallery-date-input').value;
+    const placeName = $('#gallery-place-input').value.trim();
+    if(!state.galleryPhotos.length){ errEl.textContent = 'Add at least one photo (or close this).'; errEl.style.display = 'block'; return; }
+    if(!date){ errEl.textContent = 'Please set a date.'; errEl.style.display = 'block'; return; }
+    const title = $('#gallery-title-input').value.trim() || fmtDate(date); // fall back to the date
 
     // same location resolution as the regular add-memory save
     let location;
-    if(state.bulkPicked && state.bulkPicked.lat != null){
-      location = {...state.bulkPicked, name: placeName || state.bulkPicked.name || ''};
+    if(state.galleryPicked && state.galleryPicked.lat != null){
+      location = {...state.galleryPicked, name: placeName || state.galleryPicked.name || ''};
     } else if(placeName){
       location = {lat:null, lng:null, name: placeName};
     } else {
       location = null;
     }
 
-    setLoading(true, `Importing photo ${i+1}…`);
+    setLoading(true, 'Saving gallery…');
     try{
-      const id = crypto.randomUUID();
-      const mediaKey = await Store.uploadMedia(state.userId, id, item.dataUrl, item.mimeType);
-      const entryObj = {
-        id, type: 'photo', title, text: '', date,
-        location, mediaKey, mediaType: item.mimeType, isMemory: false, mood: null,
-        createdAt: null
-      };
-      entryObj.createdAt = await Store.insertEntry(entryObj, state.userId);
-      state.entries.push(entryObj);
-      state.mediaCache[id] = item.dataUrl;
-      state.bulkImported++;
-      setLoading(false);
-      state.bulkIndex++;
-      showBulkPhoto();
+      const paths = await galleryUploadAndCollect();
+      if(state.galleryEditingId){
+        const id = state.galleryEditingId;
+        const existing = state.entries.find(e=>e.id === id) || {};
+        // drop any removed photos from storage
+        const removed = (existing.mediaPaths || []).filter(p=> !paths.includes(p));
+        for(const p of removed){ await Store.deleteMedia(p); delete state.pathCache[p]; }
+        const entryObj = { ...existing, id, type: 'photo', title, date, location, mediaKey: null, mediaType: null, mediaPaths: paths };
+        await Store.updateEntry(id, entryObj);
+        const idx = state.entries.findIndex(e=>e.id === id);
+        if(idx >= 0) state.entries[idx] = entryObj;
+        setLoading(false);
+        galleryOverlay.classList.remove('active');
+        showToast('Gallery updated.');
+      } else {
+        const id = crypto.randomUUID();
+        const entryObj = { id, type: 'photo', title, text: '', date, location, mediaKey: null, mediaType: null, mediaPaths: paths, isMemory: false, mood: null, createdAt: null };
+        entryObj.createdAt = await Store.insertEntry(entryObj, state.userId);
+        state.entries.push(entryObj);
+        setLoading(false);
+        galleryOverlay.classList.remove('active');
+        showToast(`Imported ${paths.length} photo${paths.length === 1 ? '' : 's'} as one memory.`);
+      }
+      renderTimeline();
+      if(state.view === 'map') renderMap();
+      if(state.view === 'corner') renderMemoryCorner();
     }catch(err){
       console.error(err);
       setLoading(false);
-      errEl.textContent = 'Could not import this one: ' + (err.message || 'please try again.');
+      errEl.textContent = 'Could not save: ' + (err.message || 'please try again.');
       errEl.style.display = 'block';
     }
   });
 
-  $('#bulk-modal-close').addEventListener('click', finishBulk);
-  bulkOverlay.addEventListener('click', (e)=>{ if(e.target === bulkOverlay) finishBulk(); });
+  $('#gallery-delete-btn').addEventListener('click', async ()=>{
+    if(!state.galleryEditingId) return;
+    if(!confirm('Delete this photo gallery? This cannot be undone.')) return;
+    const id = state.galleryEditingId;
+    galleryOverlay.classList.remove('active');
+    await deleteEntryById(id);
+  });
+
+  $('#gallery-modal-close').addEventListener('click', ()=> galleryOverlay.classList.remove('active'));
+  galleryOverlay.addEventListener('click', (e)=>{ if(e.target === galleryOverlay) galleryOverlay.classList.remove('active'); });
 
   // ---------------- init ----------------
   setAuthMode('login');
